@@ -1,0 +1,19 @@
+// colors
+$success: #78ff75;
+$primary: #809cff;
+$darkprimary: #333333;
+// $darkprimary: #303136;
+$darkbg: #242429;
+$warning: #dc143c;
+$boxshadow: 2px 2px 5px 2px rgba(0, 0, 0, 0.4);
+$blur: 0;
+
+$text-color: (
+  "light": #ffffff,
+  "dim": #bcbcbc,
+  "dark": #969696,
+);
+
+@function getTextColor($color) {
+  @return map-get($text-color, $color);
+}

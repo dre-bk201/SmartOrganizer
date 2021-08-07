@@ -1,0 +1,22 @@
+@mixin flexAlignCenter($direction) {
+  display: flex;
+  align-items: center;
+  flex-direction: $direction;
+}
+
+@mixin flexAlign($direction, $justify, $align) {
+  display: flex;
+  flex-direction: $direction;
+  align-items: $align;
+  justify-content: $justify;
+}
+
+@mixin alignCenter() {
+  display: grid;
+  place-items: center;
+}
+
+@mixin fullDimension() {
+  width: 100%;
+  height: 100%;
+}
