@@ -113,7 +113,7 @@ export default {
   }
 
   .logs-container {
-    padding: $padding * 1.5;
+    padding: 15px 10px 0px 10px;
     box-sizing: border-box;
     height: calc(100% - 90px);
     width: 100%;

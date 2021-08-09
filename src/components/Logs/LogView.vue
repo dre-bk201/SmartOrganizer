@@ -12,14 +12,42 @@
 
       <button v-if="log.type != 'UNLINK'" @click="undo">UNDO</button>
     </div>
+
     <div class="log-body">
       <div class="timeline" />
       <div class="log-container">
-        {{ log.type_ }}
-        {{ log.rule }}
-        {{ log.monitor }}
-        {{ log.destination }}
-        <!-- <Table :log="log" /> -->
+        <!-- <div class="container-row">
+          <p>Monitor Dir</p>
+          <p>Action</p>
+          <p>Destination</p>
+          <p>Timestamp</p>
+        </div> -->
+
+        <div class="container-row">
+          <Chip
+            :name="log.monitor"
+            title="Monitor Dir"
+            color="#FF5C5C"
+            bgColor="rgba(255, 92, 92, 0.2)"
+          />
+          <Chip
+            title="Action"
+            :name="log.type_"
+            bgColor="rgba(115, 247, 255, 0.2)"
+          />
+          <Chip
+            title="Destination"
+            :name="log.destination"
+            color="#D9FF6B"
+            bgColor="rgba(217, 255, 107, 0.2)"
+          />
+          <Chip
+            title="Timestamp"
+            :name="log.timestamp"
+            color="#FD84D4"
+            bgColor="rgba(253, 132, 212, 0.2)"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -27,9 +55,10 @@
 
 <script>
 import anime from "animejs";
+import Chip from "../Logs/Chip.vue";
 export default {
   props: ["log", "title", "index"],
-  //   components: { Table },
+  components: { Chip },
   computed: {
     getIcon() {
       // console.log(this.log);
@@ -116,81 +145,93 @@ button {
   border-radius: 3px;
   color: white;
   position: absolute;
-  top: 0px;
+  top: 9px;
   right: 15px;
 }
 
-#LogView {
+.LogView {
   opacity: 0;
   // background: red;
   height: 0px;
   overflow: hidden;
   font-family: Comfortaa;
-  // margin-bottom: 15px;
-}
+  margin-bottom: 15px;
 
-.log-header {
-  display: flex;
-  position: relative;
-  align-items: center;
-}
+  .log-header {
+    display: flex;
+    position: relative;
+    align-items: center;
 
-.log-header-column {
-  display: flex;
-  flex-flow: column nowrap;
-  /* background: blue; */
-  align-items: flex-start;
-}
+    .icon-type {
+      background: #c4c4c4;
+      border-radius: 50%;
+      padding: 5px 5px 5px 6px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-right: 10px;
 
-.icon-type {
-  background: #c4c4c4;
+      img {
+        height: 28px;
+      }
+    }
 
-  border-radius: 50%;
-  padding: 5px 5px 5px 6px;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: 10px;
-}
+    .log-header-column {
+      display: flex;
+      flex-flow: column nowrap;
+      /* background: blue; */
+      align-items: flex-start;
 
-.log-title {
-  color: #d7d7d7;
-}
+      .log-title {
+        color: #d7d7d7;
+      }
 
-.log-date {
-  color: #7a7a7a;
-  margin-top: 4px;
-  font-size: 13px;
-}
+      .log-date {
+        color: #7a7a7a;
+        margin-top: 4px;
+        font-size: 13px;
+      }
+    }
+  }
 
-.icon-type img {
-  height: 28px;
-}
+  .log-body {
+    height: 80px;
+    /* background: var(--darkPrimary); */
+    position: relative;
 
-.log-body {
-  height: 80px;
-  /* background: var(--darkPrimary); */
-  position: relative;
-}
+    .timeline {
+      height: calc(100%);
+      position: absolute;
+      width: 3px;
+      background: #4e4e4e;
+      border-radius: 3px;
+      left: 22px;
+      bottom: -7px;
+    }
 
-.timeline {
-  height: calc(100%);
-  position: absolute;
-  width: 3px;
-  background: #4e4e4e;
-  border-radius: 3px;
-  left: 22px;
-  bottom: -7px;
-}
+    .log-container {
+      @include flexAlignCenter(column);
+      background: $darkbg;
+      // padding: 0px 15px 0px 15px;
+      height: 100%;
+      box-sizing: border-box;
+      width: calc(100% - 50px);
+      position: absolute;
+      color: white;
+      right: 0px;
 
-.log-container {
-  background: $darkbg;
-  height: 100%;
-  width: calc(100% - 50px);
-  position: absolute;
-  color: white;
-  right: 0px;
+      .container-row {
+        @include flexAlignCenter(row);
+        width: 100%;
+        margin-top: 10px;
+        position: relative;
+
+        justify-content: space-evenly;
+        // background: red;
+      }
+    }
+  }
 }
 </style>
