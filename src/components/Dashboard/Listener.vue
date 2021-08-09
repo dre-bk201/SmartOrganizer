@@ -1,6 +1,9 @@
 <template>
   <div class="Listener" @click.stop="handleClick" @click.right="deleteListener">
-    <div class="status-bar" />
+    <div
+      class="status-bar"
+      :style="`background: ${status ? '#78ff75' : '#FF8E3'}`"
+    />
     <div class="listener-container">
       <img src="../../assets/images/folder-search.svg" />
       <div class="text-info">
@@ -85,7 +88,6 @@ export default {
     },
 
     showListener() {
-      // this.updateModalData(this.listener);
       this.updateModalData(JSON.parse(JSON.stringify(this.listener)));
     },
 
@@ -177,11 +179,7 @@ export default {
   },
   mounted() {
     this.$bus.on("blur-listener", (index) => {
-      if (this.listener.index != index) {
-        console.log(`${this.listener.title} is blurring`);
-        this.$el.classList.add("blur-listener");
-        console.log(this.$el.classList);
-      }
+      if (this.listener.index != index) this.$el.classList.add("blur-listener");
     });
 
     this.$bus.on("remove-blur-listener", () => {
