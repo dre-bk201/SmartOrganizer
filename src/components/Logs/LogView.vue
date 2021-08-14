@@ -16,13 +16,6 @@
     <div class="log-body">
       <div class="timeline" />
       <div class="log-container">
-        <!-- <div class="container-row">
-          <p>Monitor Dir</p>
-          <p>Action</p>
-          <p>Destination</p>
-          <p>Timestamp</p>
-        </div> -->
-
         <div class="container-row">
           <Chip
             :name="log.monitor"
@@ -122,14 +115,14 @@ export default {
   },
   mounted() {
     // console.log(this.index);
-    let duration = this.index * (1000 / this.index);
-    if (this.index == "00") duration = 800;
+    let duration = this.index * (600 / this.index);
+    if (this.index == "00") duration = 400;
     anime({
       targets: this.$el,
       opacity: 1,
       height: "125px",
       duration: duration,
-      // easing: "easeInOutQuad",
+      easing: "easeInOutQuad",
     });
   },
 };
