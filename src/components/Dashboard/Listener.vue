@@ -2,7 +2,7 @@
   <div class="Listener" @click.stop="handleClick" @click.right="deleteListener">
     <div
       class="status-bar"
-      :style="`background: ${status ? '#78ff75' : '#FF8E3'}`"
+      :style="`background: ${status ? '#78ff75' : '#FF8E33'};`"
     />
     <div class="listener-container">
       <img src="../../assets/images/folder-search.svg" />
