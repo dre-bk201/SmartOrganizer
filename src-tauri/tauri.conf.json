@@ -12,7 +12,7 @@
   "tauri": {
     "bundle": {
       "active": true,
-      "targets": "appimage",
+      "targets": ["appimage", "app", "msi", "deb", "dmg"],
       "identifier": "com.tauri.dev",
       "icon": [
         "icons/32x32.png",
