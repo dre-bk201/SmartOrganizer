@@ -2,20 +2,10 @@
   <div id="Dashboard">
     <div class="body" @click.stop="triggerCloseEvent">
       <teleport to="#modal">
-        <!-- <keep-alive> -->
         <ListenerModal v-if="Object.keys(getModalData).length" />
-        <!-- </keep-alive> -->
       </teleport>
-      <!-- <ListenerModal v-show="Object.keys(getModalData).length" /> -->
+
       <div class="content-container">
-        <!-- <div v-show="!getListeners.length" class="empty-state">
-          <img
-            draggable="false"
-            src="../assets/images/idle-empty-state.png"
-            alt=""
-          />
-          Click "+" to add listeners
-        </div> -->
         <template v-for="(listener, index) in getListeners" :key="index">
           <Listener :listener="listener" :index="index" />
         </template>
@@ -69,14 +59,20 @@ export default {
       });
     },
     filterLogs(logs) {
-      logs.forEach((logArr) => {
-        logArr.forEach((log) => {
-          if (log.type_) {
-            // console.log("Logs: ", log);
-            this.$store.commit("updateLogs", log);
+      for (let i = 0; i < logs.length; i++)
+        for (let j = 0; j < logs[i].length; j++) {
+          if (logs[i][j].type_) {
+            this.$store.commit("setCleaning", true);
+            this.$store.commit("updateLogs", logs[i][j]);
           }
-        });
-      });
+        }
+      // logs.forEach((logArr) => {
+      //   logArr.forEach((log) => {
+      //     if (log.type_) {
+      //       this.$store.commit("updateLogs", log);
+      //     }
+      //   });
+      // });
     },
 
     triggerCloseEvent() {
@@ -87,17 +83,11 @@ export default {
   mounted() {
     invoke;
     const sendSignal = async () => {
-      if (this.getListeners.length) {
-        let logs = await invoke("run_organizer");
-        this.filterLogs(logs);
-      }
+      if (this.getListeners.length)
+        this.filterLogs(await invoke("run_organizer"));
     };
-    sendSignal();
+
     setInterval(async () => {
-      // if (this.getListeners.length) {
-      //   let logs = await invoke("run_organizer");
-      //   this.filterLogs(logs);
-      // }
       sendSignal();
     }, 5000);
   },

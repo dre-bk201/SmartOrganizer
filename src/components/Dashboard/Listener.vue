@@ -77,12 +77,12 @@ export default {
       }
       const data = { loading: true, title: this.listener.title };
       this.updateSidepaneData(data);
+
       invoke("walk_dir", {
         path: path,
       }).then((res) => {
         res.title = this.listener.title;
         res.loading = false;
-        console.log("structure: ", res);
         this.updateSidepaneData(res);
       });
     },

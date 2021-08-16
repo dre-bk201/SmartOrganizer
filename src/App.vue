@@ -1,15 +1,16 @@
 <template>
   <div id="app">
-    <!-- <Navbar /> -->
     <div id="nav">
       <div class="container">
         <div class="bar" />
 
-        <!-- <keep-alive include="Dashboard"> -->
         <Navlink route="/" distance="0px" name="Dashboard" />
-        <!-- </keep-alive> -->
         <Navlink route="/logs" distance="105px" name="Logs" />
         <Navlink route="/statistics" distance="210px" name="Statistics" />
+
+        <div class="align-bottom">
+          <BroomAnimation v-if="$store.getters.isCleaning" />
+        </div>
 
         <router-view v-slot="{ Component }">
           <keep-alive include="Dashboard">
@@ -18,16 +19,15 @@
         </router-view>
       </div>
     </div>
-    <!-- <keep-alive include="Dashboard"> -->
-    <!-- </keep-alive> -->
   </div>
 </template>
 <script>
 import Navlink from "@/components/Navigation/Navlink";
-
+import BroomAnimation from "./components/Global/BroomAnimation.vue";
 export default {
   components: {
     Navlink,
+    BroomAnimation,
   },
   methods: {
     output(str) {
@@ -45,7 +45,6 @@ export default {
 }
 
 #app {
-  // background: red;
   background: $darkprimary;
   height: 100vh;
   width: 100vw;
@@ -56,10 +55,15 @@ export default {
     width: $nav-width;
     background: $darkprimary;
     font-size: 0.8rem;
+    flex-grow: 1;
 
     .container {
       @include flexAlignCenter(column);
       padding-top: 50px;
+      .align-bottom {
+        position: absolute;
+        bottom: 10px;
+      }
     }
 
     .bar {

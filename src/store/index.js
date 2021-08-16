@@ -10,6 +10,7 @@ import { invoke } from "@tauri-apps/api";
 
 const store = createStore({
   state: {
+    isCleaning: false,
     sidepaneData: {},
     modalData: {},
     trash: {},
@@ -165,6 +166,9 @@ const store = createStore({
     getModalData: (state) => {
       return state.modalData;
     },
+    isCleaning: (state) => {
+      return state.isCleaning;
+    },
     getTrash: (state) => {
       return state.trash;
     },
@@ -215,6 +219,10 @@ const store = createStore({
       let updatedLog = Object.assign({}, log);
       updatedLog.index = state.listeners[log.index].logs.length;
       state.listeners[log.index].logs.push(updatedLog);
+    },
+
+    setCleaning: (state, cleaning) => {
+      state.isCleaning = cleaning;
     },
   },
 });
