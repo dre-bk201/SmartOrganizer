@@ -48,8 +48,9 @@ import animejs from "animejs";
 export default {
   mounted() {
     this.$el.querySelector("svg").style.transform = "scale(10)  rotate(0deg)";
+    const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
     const max = 50;
-    const min = max / 2;
+    const min = 0;
 
     animejs({
       targets: this.$el.querySelector("svg"),
@@ -70,10 +71,12 @@ export default {
 
     this.$el.querySelectorAll(".particles").forEach((element) => {
       let random = Math.random() * (max - min) + min;
+      element.style.bottom = "0px";
       element.style.left = `${Math.random() * (max - 0) + 0}px`;
+
       animejs({
         targets: element,
-        bottom: random,
+        bottom: clamp(random, 30, max),
         easing: "linear",
         duration: 3000,
       });
@@ -99,8 +102,6 @@ $width: 5px;
   .particles {
     position: absolute;
     border-radius: 50%;
-    bottom: 0px;
-    left: 0px;
     width: $width;
     height: $width;
     border: 1px solid rgb(189, 189, 189);
