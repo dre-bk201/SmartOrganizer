@@ -20,9 +20,6 @@ export default {
   },
   inject: ["listenerData"],
   mounted() {
-    // setInterval(() => {
-    //   console.log(this.listenerData.value);
-    // }, 1000);
     anime({
       targets: this.$el,
       translateX: ["400px", "0px"],

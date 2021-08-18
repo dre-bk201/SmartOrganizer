@@ -1,5 +1,6 @@
 import dataLabels from "chartjs-plugin-datalabels";
 
+// Charts
 const MONTHS = [
   "January",
   "February",
@@ -126,4 +127,13 @@ export const generateChart = (chartType, listeners) => {
       },
     };
   }
+};
+
+// Element Selection
+export const $qsa = (domElement, query) => {
+  return domElement.querySelectorAll(query);
+};
+
+export const $qs = (domElement, query) => {
+  return domElement.querySelector(query);
 };

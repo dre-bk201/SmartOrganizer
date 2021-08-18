@@ -2,13 +2,14 @@
   all(not(debug_assertions), target_os = "windows"),
   windows_subsystem = "windows"
 )]
+
 use directories::ProjectDirs;
 use directory_tree::{filetree, FileNode};
-use organizer::modules::{organizer::SmartOrganizer, shared::ListenerData, shared::Logs};
+use organizer::modules::{
+  organizer::SmartOrganizer, shared::FileOperations, shared::ListenerData, shared::Logs,
+};
 use std::sync::Mutex;
 use tauri::{command, State};
-
-// "devPath": "./src",
 
 #[derive(Default)]
 struct OrganizerState<'a> {
@@ -57,6 +58,11 @@ fn save_state<'a>(data: Vec<ListenerData>) {
 }
 
 #[command]
+fn get_metadata(path: &str) -> usize {
+  FileOperations::walk(path, false).len()
+}
+
+#[command]
 fn load_state<'a>() -> Vec<ListenerData> {
   let mut return_val = Vec::new();
   if let Some(app_dir) = ProjectDirs::from("com", "h4ck3r", "SmartOrganizer") {
@@ -100,7 +106,8 @@ fn main() {
       update_listener,
       walk_dir,
       load_state,
-      save_state
+      save_state,
+      get_metadata
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

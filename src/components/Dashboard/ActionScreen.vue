@@ -3,6 +3,7 @@
     <Location
       v-for="key in Object.keys(listener.action_paths)"
       :key="key"
+      :dir="key"
       :advanced="true"
       :index="listener.index"
       :listener="listener"
@@ -21,8 +22,8 @@ export default {
   },
   props: ["name", "listener"],
   computed: { ...mapGetters(["getListeners"]) },
+
   mounted() {
-    console.log("Name: ", this.name);
     anime({
       targets: this.$el,
       translateX: ["400px", "0px"],

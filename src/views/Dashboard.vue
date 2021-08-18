@@ -66,13 +66,6 @@ export default {
             this.$store.commit("updateLogs", logs[i][j]);
           }
         }
-      // logs.forEach((logArr) => {
-      //   logArr.forEach((log) => {
-      //     if (log.type_) {
-      //       this.$store.commit("updateLogs", log);
-      //     }
-      //   });
-      // });
     },
 
     triggerCloseEvent() {

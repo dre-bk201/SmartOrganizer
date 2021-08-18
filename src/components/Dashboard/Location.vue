@@ -24,7 +24,7 @@
       <img src="@/assets/images/destination.svg" />
       <div class="content">
         <div>{{ keyName }}</div>
-        <span>{{ getMetaData }}</span>
+        <span>{{ metadata }}</span>
       </div>
       <img
         :src="
@@ -90,13 +90,14 @@
 
 <script>
 import anime from "animejs";
-// import { fs } from "@tauri-apps/api";
+import { $qsa, $qs } from "../../utils";
+import { invoke } from "@tauri-apps/api";
 export default {
   data: () => ({
     hover: false,
     isShown: false,
     selection: new Set(),
-    metadata: "37 files or folders",
+    metadata: "",
   }),
   props: {
     dir: String,
@@ -112,8 +113,8 @@ export default {
   methods: {
     toggleExpand() {
       const root = this.$el;
-      const expanded = root.querySelector(".expand");
-      const arrow = root.querySelector(".option img");
+      const expanded = $qs(root, ".expand");
+      const arrow = $qs(root, ".option img");
       const animation = {
         targets: arrow,
         duration: 200,
@@ -131,65 +132,93 @@ export default {
       }
     },
 
-    handleCheckBoxClick(event) {
-      const root = this.$el;
-      const checkbox = root.querySelector("#" + event.target.htmlFor);
-      if (!checkbox.checked) {
-        this.selection.add(checkbox.value);
-      } else {
-        this.selection.delete(checkbox.value);
-      }
+    validateSelection() {
+      var possibleSelections = ["COPY", "MOVE", "DELETE", "UNLINK", "NOTIFY"];
+      const removeConflicts = (conflicts) => {
+        for (let i = 0; i < possibleSelections.length; i++)
+          if (conflicts.includes(possibleSelections[i]))
+            delete possibleSelections[i];
+      };
 
-      this.updateAction(this.keyName, Array.from(this.selection));
-      console.log(this.selection);
+      let selections = Array.from(this.selection);
+
+      if (selections.includes("MOVE")) {
+        removeConflicts(["DELETE", "UNLINK"]);
+      } else if (selections.includes("DELETE"))
+        removeConflicts(["MOVE", "UNLINK"]);
+      else if (selections.includes("UNLINK"))
+        removeConflicts(["MOVE", "DELETE"]);
+
+      console.log("form: ", possibleSelections);
+      $qsa(this.$el, ".checkbox-container").forEach((element) => {
+        let actionType = $qs(element, "input").value;
+
+        if (!possibleSelections.includes(actionType)) {
+          element.classList.add("disabled");
+          $qs(element, "input").disabled = true;
+          this.selection.delete(actionType);
+        } else {
+          $qs(element, "input").disabled = false;
+          element.classList.remove("disabled");
+        }
+      });
+    },
+
+    handleCheckBoxClick(event) {
+      const checkbox = $qs(this.$el, "#" + event.target.htmlFor);
+      if (!checkbox.disabled) {
+        if (!checkbox.checked) this.selection.add(checkbox.value);
+        else this.selection.delete(checkbox.value);
+        this.validateSelection();
+
+        this.updateAction(this.keyName, Array.from(this.selection));
+      }
     },
 
     closeExpanded() {
-      document.querySelectorAll(".ActionLocation.show").forEach((element) => {
-        element.querySelector(".expand").remove("show");
+      $qsa(document, ".ActionLocation.show").forEach((element) => {
+        $qsa(element, ".expand").remove("show");
         element.classList.remove("show");
       });
     },
 
     normalizeText(text) {
-      console.log(text);
       let data = text.toLowerCase();
       return data[0].toUpperCase() + data.slice(1);
     },
   },
-  computed: {
-    getMetaData() {
-      return 12;
-    },
-  },
-  mounted() {
+
+  async mounted() {
     if (this.advanced) {
-      Object.keys(this.listener.action_paths).forEach((key) => {
-        this.listener.action_paths[key].forEach((element) => {
-          console.log(`Element: ${element} ${this.normalizeText(element)}`);
-          const checkbox = this.$el.querySelector(
+      let action_paths = this.listener.action_paths;
+      let keys = Object.keys(action_paths);
+
+      for (let i = 0; i < keys.length; i++)
+        action_paths[keys[i]].forEach((element) => {
+          const checkbox = $qs(
+            this.$el,
             `#FilenameCheckBox${this.normalizeText(element)}`
           );
+
           checkbox.checked = true;
           this.selection.add(element);
+          console.log("Ssa:", this.selection);
+          this.validateSelection();
         });
-      });
-      //  const _key = this.listener.action_paths[key];
-      //   _key.forEach(action => {
-      //     const element = this.$el.querySelector(
-      //       `#FilenameCheckBox${this.normalize(item.value)}`
-      //     );
-      //     element.checked = true;
-
-      //   })
-      // this.
-      // this.listener.action_paths["/home/h4ck3r/Videos/"] = ["MOVE", "COPY"];
     }
+
+    this.metadata = `${await invoke("get_metadata", {
+      path: this.dir + "*",
+    })} files and folders`;
   },
 };
 </script>
 
+
 <style lang="scss" scoped>
+.disabled {
+  opacity: 0.5;
+}
 .Location {
   border-radius: 8px;
   height: 58px;
@@ -270,6 +299,7 @@ export default {
 
       .checkbox-container {
         @include alignCenter();
+        transition: 0.3s;
         display: block;
         margin-bottom: 10px;
         margin-right: 30px;
