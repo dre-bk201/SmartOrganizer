@@ -136,8 +136,10 @@ export default {
       var possibleSelections = ["COPY", "MOVE", "DELETE", "UNLINK", "NOTIFY"];
       const removeConflicts = (conflicts) => {
         for (let i = 0; i < possibleSelections.length; i++)
-          if (conflicts.includes(possibleSelections[i]))
-            delete possibleSelections[i];
+          if (conflicts.includes(possibleSelections[i])) {
+            possibleSelections.splice(i, 1);
+            i -= 1;
+          }
       };
 
       let selections = Array.from(this.selection);
