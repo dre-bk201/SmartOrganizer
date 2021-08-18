@@ -28,13 +28,21 @@ const generateChartData = function (chartType, listeners) {
     let dataset = {};
     let positions = [];
 
-    listeners.forEach((item) => {
-      item.logs.forEach((log) => {
+    for (let i = 0; i < listeners.length; i++) {
+      listeners[i].logs.forEach((log) => {
         const date = new Date(log.timestamp);
         defaultObject(dataset, MONTHS[date.getMonth()], 1);
         positions.push(date.getMonth());
       });
-    });
+    }
+
+    // listeners.forEach((item) => {
+    //   item.logs.forEach((log) => {
+    //     const date = new Date(log.timestamp);
+    //     defaultObject(dataset, MONTHS[date.getMonth()], 1);
+    //     positions.push(date.getMonth());
+    //   });
+    // });
 
     let upperBoundMonth = positions.reduce((a, b) => {
       return Math.max(a, b);
@@ -42,12 +50,14 @@ const generateChartData = function (chartType, listeners) {
 
     let data = [];
 
-    MONTHS.forEach((month, index) => {
+    MONTHS.forEach((month) => {
       if (Object.keys(dataset).indexOf(month) < 0) data.push(0);
       else {
-        data.push(index);
+        data.push(dataset[month]);
       }
     });
+
+    console.log(data);
 
     return {
       labels: MONTHS.slice(0, upperBoundMonth + 1),
@@ -112,7 +122,6 @@ export const generateChart = (chartType, listeners) => {
       },
     };
   } else if (chartType == "doughnut") {
-    console.log(labels, data);
     return {
       type: chartType,
       options: { responsive: true, maintainAspectRatio: false },
