@@ -49,7 +49,7 @@ fn save_state<'a>(data: Vec<ListenerData>) {
 
     let db_path = app_dir.config_dir().join("db.json");
     if !db_path.exists() {
-      std::fs::create_dir(&app_dir.config_dir()).unwrap();
+      std::fs::create_dir_all(&app_dir.config_dir()).unwrap();
     }
     let contents = serde_json::to_string(&data).unwrap();
     println!("Saving file: {:?}", contents);
