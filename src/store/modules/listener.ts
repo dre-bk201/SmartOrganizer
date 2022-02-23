@@ -41,7 +41,7 @@ export const initialListener: Listener = {
   deep: false,
   enabled: false,
   title: "",
-  paths: ["C:/Test Workspace/Github"],
+  paths: [],
   selection: "Any of the following",
   rules: [],
   actions: [],
