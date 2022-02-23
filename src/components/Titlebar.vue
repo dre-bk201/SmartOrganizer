@@ -2,11 +2,19 @@
 import Icon from "./Icon.vue";
 
 import { appWindow } from "@tauri-apps/api/window";
-import { inject, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref } from "vue";
+import { useStore } from "vuex";
+
+const store = useStore();
 
 const isDark = inject("isDark");
 
+// Refs
 const isMaximized = ref(false);
+
+// Computed
+const triggerClean = computed(() => store.getters.triggerClean);
+const log = computed(() => store.getters["listeners/listener"].last);
 
 // Functions
 
@@ -32,8 +40,11 @@ onMounted(() => {
 <template>
   <div
     data-tauri-drag-region
-    class="h-8 bg-l_secondary dark:bg-d_secondary flex items-center justify-end relative"
+    class="h-8 bg-l_secondary dark:bg-d_secondary flex items-center pl-5 relative"
   >
+    <span data-tauri-drag-region class="text-gray-800 dark:text-[#b6b6b6]">{{
+      triggerClean ? log.path : ""
+    }}</span>
     <Icon
       class="absolute right-36 hover:cursor-pointer"
       :fill="isDark ? '#b6b6b6' : 'black'"
@@ -44,10 +55,10 @@ onMounted(() => {
       width="20"
     />
 
-    <div class="flex h-full hover:cursor-pointer">
+    <div class="flex h-full hover:cursor-pointer absolute right-0">
       <Icon
         @click="minimize"
-        class="titlebar--icon px-3 center hover:bg-slate-500"
+        class="titlebar--icon right-36 px-3 center hover:bg-slate-500"
         :key="(isDark as number)"
         name="minimize"
         height="2"

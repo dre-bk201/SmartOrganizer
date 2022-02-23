@@ -41,7 +41,7 @@ export const initialListener: Listener = {
   deep: false,
   enabled: false,
   title: "",
-  paths: [],
+  paths: ["C:/Test Workspace/Github"],
   selection: "Any of the following",
   rules: [],
   actions: [],
@@ -51,43 +51,7 @@ export const initialListener: Listener = {
 export const namespaced = true;
 
 export const state = {
-  listeners: [
-    // {
-    //   id: "12",
-    //   enabled: false,
-    //   title: "Desktop Organizer",
-    //   last_update: "Today 8:20AM",
-    //   num_of_organized: 12,
-    //   paths: ["C:/Users/aundr/Desktop/"],
-    //   selection: "Any of the following",
-    //   rules: [
-    //     {
-    //       search_type: "File Name",
-    //       condition: "Includes",
-    //       text: "Adine",
-    //     },
-    //     {
-    //       search_type: "File Extension",
-    //       condition: "Not Includes",
-    //       text: "pdf",
-    //     },
-    //     {
-    //       search_type: "File Size",
-    //       condition: "Greater",
-    //       text: "a",
-    //     },
-    //     {
-    //       search_type: "File Size",
-    //       condition: "Greater",
-    //       text: "a",
-    //     },
-    //   ],
-    //   actions: [
-    //     ["MOVE", "C:/Users/aundr/Desktop/Organizer Workspace/Fonts"],
-    //     ["COPY", "C:/Users/aundr/Desktop/"],
-    //   ],
-    // },
-  ],
+  listeners: [],
 };
 
 export const getters = {
@@ -104,6 +68,11 @@ export const getters = {
     // state.listeners.forEach(listener => {
     //   listener.
     // })
+  },
+  last(state: State) {
+    let len = state.listeners.length - 1;
+    let logs_len = state.listeners[len].logs.length - 1;
+    return state.listeners[len].logs[logs_len];
   },
 };
 export const mutations = {

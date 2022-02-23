@@ -45,9 +45,16 @@ onMounted(() => {
         <div
           class="right--block rounded-tr-lg rounded-br bg-l_primary dark:bg-d_primary w-[50%] h-full absolute right-0 top-0"
         />
-        <div class="container">
-          <button @click="saveModal" class="mr-5">Save</button>
-          <button @click="closeModal">Close</button>
+        <div class="container flex justify-end">
+          <button
+            @click="closeModal"
+            class="mr-5 bg-[#F3F3F3] dark:bg-d_secondary px-3 py-1 rounded-md"
+          >
+            Close
+          </button>
+          <button @click="saveModal" class="bg-[#FF3B76] px-3 py-1 rounded-md">
+            Save
+          </button>
         </div>
         <header class="text-2xl mb-6">Create/Edit Rules</header>
         <section ref="sectionRef" class="flex flex-col">
