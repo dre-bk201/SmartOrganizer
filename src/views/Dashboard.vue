@@ -1,156 +1,89 @@
-<template>
-  <div id="Dashboard">
-    <div class="body" @click.stop="triggerCloseEvent">
-      <teleport to="#modal">
-        <ListenerModal v-if="Object.keys(getModalData).length" />
-      </teleport>
+<script lang="ts">
+import { ComputedRef, defineComponent } from "vue";
 
-      <div class="content-container">
-        <template v-for="(listener, index) in getListeners" :key="index">
-          <Listener :listener="listener" :index="index" />
-        </template>
-      </div>
-      <i class="plus" @click.stop="showModal" v-html="plus"></i>
-      <Trash v-if="Object.keys(getTrash).length" />
-    </div>
-    <div class="h-spacer"></div>
-    <Sidepane node="" />
-  </div>
-</template>
-
-<script>
-// @ is an alias to /src
-import Sidepane from "@/components/Dashboard/Sidepane";
-import Listener from "@/components/Dashboard/Listener";
-import ListenerModal from "@/components/Dashboard/ListenerModal";
-import Trash from "@/components/Dashboard/Trash.vue";
-import { invoke } from "@tauri-apps/api";
-
-import { plus } from "@/icons";
-
-import { mapGetters } from "vuex";
-export default {
+export default defineComponent({
   name: "Dashboard",
-  components: {
-    Sidepane,
-    Trash,
-    Listener,
-    ListenerModal,
-  },
-  data: () => ({
-    plus,
-  }),
-  computed: {
-    ...mapGetters(["getModalData", "getListeners", "getTrash"]),
-  },
-  methods: {
-    showModal() {
-      this.$store.commit("updateModalData", {
-        type_: "", // *
-        index: null,
-        rule: "", // *
-        title: "", // *
-        deep: false,
-        logs: [],
-        search: "", // *
-        action_paths: {},
-        monitor_paths: [], // *
-        enable_smart_organizer: false,
-      });
-    },
-    filterLogs(logs) {
-      for (let i = 0; i < logs.length; i++)
-        for (let j = 0; j < logs[i].length; j++) {
-          if (logs[i][j].type_) {
-            this.$store.commit("setCleaning", true);
-            this.$store.commit("updateLogs", logs[i][j]);
-          }
-        }
-    },
-
-    triggerCloseEvent() {
-      this.$store.commit("updateSidepaneData", {});
-    },
-  },
-
-  mounted() {
-    invoke;
-    const sendSignal = async () => {
-      if (this.getListeners.length)
-        this.filterLogs(await invoke("run_organizer"));
-    };
-
-    setInterval(async () => {
-      sendSignal();
-    }, 5000);
-  },
-};
+});
 </script>
 
-<style lang="scss" scoped>
-#Dashboard {
-  @include flexAlignCenter(row);
-  border-radius: 30px 0px 0px;
-  background: $darkbg;
-  height: 100%;
-  width: calc(100vw - #{$nav-width});
-  position: absolute;
-  top: 0px;
-  overflow: hidden;
-  left: $nav-width;
+<script lang="ts" setup>
+import ListenerVue from "../components/Listener.vue";
+import ListenerDetail from "../components/ListenerDetail.vue";
 
-  .body {
-    border-top-left-radius: 15px;
-    transition: 0.4s;
-    position: relative;
-    flex-grow: 1;
-    height: 100%;
-    display: flex;
-    width: 100%;
+import { computed } from "vue";
+import { useStore } from "vuex";
+import anime from "animejs";
 
-    .content-container {
-      position: absolute;
-      @include fullDimension();
-      @include flexAlignCenter(column);
-      padding: 50px 20px 10px 20px;
-      box-sizing: border-box;
-      // height: 100%;
-      // width: 100%;
-      // display: flex;
-      // flex-flow: column;
-      // align-items: center;
+import type { Listener } from "../store/modules/listener";
 
-      // #Trash {
-      //   // position: absolute;
-      // }
-    }
+const store = useStore();
 
-    .plus {
-      @include flexAlignCenter(row);
-      background: $primary;
-      position: absolute;
-      border-radius: 10px;
-      transition: 0.3s;
-      fill: white;
-      padding: 5px;
-      bottom: 15px;
-      right: 15px;
-      width: 30px;
-      height: 30px;
-      // z-index: 1;
-      box-shadow: $boxshadow;
-    }
+const search = computed(() => store.getters["dashboardSearch"]);
 
-    .plus:hover {
-      box-shadow: 0px 0px 0px 0px;
-      cursor: pointer;
-    }
-  }
-  .h-spacer {
-    height: 100%;
-    min-width: $padding;
-    min-height: $padding;
-    background: $darkprimary;
-  }
-}
-</style>
+const modalListener = computed(() => store.state.modal["listener"]);
+
+const listenerRect: ComputedRef<DOMRect> = computed(
+  () => store.getters["listenerRect"]
+);
+
+const getFilteredListeners = computed(() => {
+  let arr = store.state.listener.listeners as Array<Listener>;
+
+  return arr.filter((list) =>
+    list.title.toLowerCase().includes(search.value.toLowerCase())
+  );
+});
+
+const onEnter = async (el: Element) => {
+  const { bottom, left, width, height } = listenerRect.value;
+  console.log("Inner Height", window.innerHeight);
+
+  (<HTMLInputElement>el).style.left = `${left}px`;
+  (<HTMLInputElement>el).style.bottom = `${window.innerHeight - bottom}px`;
+  (<HTMLInputElement>el).style.width = `${width}px`;
+  (<HTMLInputElement>el).style.height = `${height}px`;
+
+  await anime({
+    targets: el,
+    duration: 3000,
+    left: "0px",
+    bottom: "0px",
+    width: "100%",
+    height: "100%",
+    easing: "linear",
+  }).finished;
+};
+
+const onLeave = async (el: Element) => {
+  const { bottom, left, width, height } = listenerRect.value;
+
+  (<HTMLDivElement>el).style.left = `${left}px`;
+  (<HTMLDivElement>el).style.bottom = `${window.innerHeight - bottom}px`;
+  (<HTMLDivElement>el).style.width = `${width}px`;
+  (<HTMLDivElement>el).style.height = `${height}px`;
+
+  // await anime({
+  //   targets: el,
+  //   duration: 2000,
+  //   left: `${left}px`,
+  //   bottom: `${window.innerHeight - bottom}px`,
+  //   width: `${width}%`,
+  //   height: `${height}%`,
+  //   easing: "linear",
+  // }).finished;
+};
+</script>
+<template>
+  <div
+    class="flex flex-col flex-grow overflow-hidden rounded-tl-2xl h-full px-[1.75rem] pt-8 bg-l_primary dark:bg-d_primary overflow-y-auto"
+  >
+    <ListenerVue
+      v-for="listener in getFilteredListeners"
+      :key="listener.id"
+      v-bind="{ ...listener }"
+    />
+    <!-- <Transition @enter="onEnter" @leave="onLeave"> -->
+    <ListenerDetail v-if="Object.keys(modalListener).length" />
+    <!-- </Transition> -->
+  </div>
+</template>
