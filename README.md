@@ -40,3 +40,8 @@ A **Rule** is provided and in accordance to that rule, if files/directories matc
 - Empty States
 - Refactor rust backend 
 - MacOs like titlebar and more...
+
+## Additionals
+- If you wanna see the previous version for contrast check releases and download the prerelease. Idk why but the option I guess.
+
+
