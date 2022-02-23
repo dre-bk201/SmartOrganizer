@@ -1,18 +1,18 @@
 {
   "package": {
     "productName": "smart-organizer",
-    "version": "0.1.3"
+    "version": "1.0.0"
   },
   "build": {
     "distDir": "../dist",
-    "devPath": ".src/",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "devPath": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
   },
   "tauri": {
     "bundle": {
       "active": true,
-      "targets": ["appimage", "app", "msi", "deb", "dmg"],
+      "targets": "all",
       "identifier": "com.tauri.dev",
       "icon": [
         "icons/32x32.png",
@@ -37,6 +37,7 @@
         "useBootstrapper": false,
         "exceptionDomain": "",
         "signingIdentity": null,
+        "providerShortName": null,
         "entitlements": null
       },
       "windows": {
@@ -49,16 +50,16 @@
       "active": false
     },
     "allowlist": {
-      "dialog": {
-        "open": true
-      }
+      "all": true
     },
     "windows": [
       {
-        "title": "Smart Organizer",
-        "width": 950,
-        "height": 600,
+        "title": "SmartOrganizer",
+        "width": 985,
+        "height": 670,
         "resizable": true,
+        "transparent": true,
+        "decorations": false,
         "fullscreen": false
       }
     ],

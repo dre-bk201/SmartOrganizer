@@ -1,24 +1,47 @@
-# SmartOrganizer
+# ![alt repo-icon](./src/assets/icons/broom.svg) Smart Organizer
 
-**SmartOrganizer** is a project aimed at ya'll lazy bones (myself included) or what I like to call it **_highly efficient beings_** that don't have the time to spare on something as petty and minuscule as organizing our _desktops_ something some of us call **"home"**. But fret no further SmartOrganizer is here to the rescue and not only is it extremely lightweight coming in at **_2.8 - 3.2MB_** disk space and on average consumes less than **_50MB_** of ram with tonnes of listeners all made possible by **_@tauri-apps_**, A proper benchmarking may need to be done.
+Smart Organizer is an application that aims to improve your overall desktop/workspace tidiness, by allowing you to set a variety of **Rules**.
 
-## Preview
-![dashboard](https://user-images.githubusercontent.com/48803238/129455319-84918c0f-874e-410e-a88a-797c3f0b1de5.png)
+## Demo:
+![alt repo-icon](./demo/demo.gif)
+## Personal Usecases: 
+  - Removing unwanted files.
+  - Sorting Light Novel Books, Coding Books.
+  - Moving school documents into appropriate folders.
+  - Moving anime episodes into correct folder.
+  - Cleaning unused environment directories or project folders like venv folders, node_modules and rust target folders etc.
+
+## How does it work?
+This app is uses quite a bit of jargons, namely:
+- **Listener** - This is the term given to the component that sends the signal to the rust backend to organize on a defined interval.
+- **Rule** - A rule is a condition a file or path must follow in order to carry out an **Action**. Definition:
+```ts
+interface Rule {
+  search_type: "Folder Name" | "File Name" | "File Extension" | "File Content" | "FileSize" | "Path Name",
+  condition: "Includes" | "Not Includes" | "Exact Match" | "Is Not",
+  text: string // text being the value to match
+}
+```
+- **Action** - A tuple consisting of the action to perform as well as optionally a destination respectively. Definition:
+```ts
+type ActionType = "MOVE" | "COPY" | "DELETE" | "UNLINK" | "RENAME";
+
+type Action = [ActionType, string];
+
+```
+A **Rule** is provided and in accordance to that rule, if files/directories match in the specified path an **Action** is performed. The option of scanning a directory of depth 1 or recursively is also made possible.
+## Major changes from prerelease
+ - More modern UI.
+ - More readable codebase.
+ - Tree browser moved from clicking listener to dedicated button in listener's modal.
+ - Listener's modal opens on a single click instead of double.
+
+## Upcoming 
+- Empty States
+- Refactor rust backend 
+- MacOs like titlebar and more...
+
+## Additionals
+- If you wanna see the previous version for contrast check releases and download the prerelease. Idk why but the option I guess.
 
 
-## Organizer Presets Progress
-
-|        | FileExtension                       | FileName                            |
-| ------ | ----------------------------------- | ----------------------------------- |
-| MOVE   | <center>:heavy_check_mark:</center> | <center>:heavy_check_mark:</center> |
-| COPY   | <center>:heavy_check_mark:</center> | <center>:heavy_check_mark:</center> |
-| DELETE | <center>:heavy_check_mark:</center> | <center>:heavy_check_mark:</center> |
-| UNLINK | <center>:heavy_check_mark:</center> | <center>:heavy_check_mark:</center> |
-
-## Upcoming Features
-
-- [ ] Notification
-- [ ] Search Deep
-- [ ] Enable SmartOrganizer (More on this will be disclosed)
-- [ ] Regex (Maybe)
-- [ ] Perform action based on a time specified

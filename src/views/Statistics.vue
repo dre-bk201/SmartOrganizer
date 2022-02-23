@@ -1,85 +1,38 @@
+<script lang="ts" setup>
+import Chart from "../components/Chart.vue";
+import ListenerUsage from "../components/ListenerUsage.vue";
+
+import { useStore } from "vuex";
+import { computed } from "vue";
+
+const store = useStore();
+const listeners = computed(() => store.state.listener.listeners);
+</script>
 <template>
-  <div class="Statistics">
-    <div class="Statistics__body">
-      <div class="Statistics__body__left">
-        <Chart v-if="getListeners.length" chartType="line" />
-        <Chart v-if="getListeners.length" chartType="doughnut" />
+  <div
+    class="bg-l_primary flex dark:bg-d_primary rounded-tl-2xl dark:text-gray-300 h-full px-3 pb-2 box-content overflow-y-auto"
+  >
+    <div class="graphs flex flex-col grow px-4 overflow-y-auto pt-6">
+      <div
+        class="graph-1 min-h-[25rem] rounded-md bg-l_white dark:bg-d_secondary mb-5"
+      >
+        <Chart chartType="line" :listeners="listeners" />
       </div>
-      <div class="Statistics__body__right">
-        <div class="Statistics__body__right__stats-pane">
-          <div class="Statistics__body__right__stats-pane__approximation">
-            Saving you ~{{ savedTime }}
-          </div>
-          <ListenerPerc
-            v-for="listener in getListeners"
-            :key="listener.index"
-            :listener="listener"
-          />
-        </div>
+      <div
+        class="graph-2 min-h-[25rem] rounded-md bg-l_white dark:bg-d_secondary"
+      >
+        <Chart chartType="doughnut" :listeners="listeners" />
       </div>
+    </div>
+    <div
+      class="detail h-full bg-l_white dark:bg-d_secondary w-[225px] rounded-md px-4 overflow-y-auto"
+    >
+      <header class="text-center pt-6 pb-7 font-semibold text-2xl">
+        Listener Usage
+      </header>
+
+      <ListenerUsage :listener="listener" v-for="listener in listeners">
+      </ListenerUsage>
     </div>
   </div>
 </template>
-
-<script>
-import ListenerPerc from "../components/Statistics/ListenerPerc.vue";
-import Chart from "../components/Statistics/Chart.vue";
-import { mapGetters } from "vuex";
-export default {
-  name: "Statistics",
-  components: { ListenerPerc, Chart },
-  computed: {
-    ...mapGetters(["getListeners"]),
-    savedTime() {
-      return "30 mins";
-    },
-  },
-};
-</script>
-
-<style lang="scss" scoped>
-.Statistics {
-  border-radius: 30px 0px 0px;
-  background: $darkbg;
-  height: 100%;
-  width: calc(100vw - #{$nav-width} - #{$padding});
-  position: absolute;
-  top: 0px;
-  left: $nav-width;
-  box-sizing: border-box;
-  color: white;
-
-  &__body {
-    height: 100%;
-    display: flex;
-    padding: 20px 10px 0px 0px;
-    box-sizing: border-box;
-
-    &__left {
-      width: calc(100% - 245px);
-      height: 100%;
-      overflow-y: auto;
-    }
-
-    &__right {
-      height: calc(100% - 15px);
-      width: 250px;
-      margin-left: 5px;
-      &__stats-pane {
-        @include fullDimension();
-        box-sizing: border-box;
-        padding: 150px 10px 0px 10px;
-        border-radius: 8px;
-        background: $darkprimary;
-
-        &__approximation {
-          font-weight: getFontWeight(bold);
-          text-align: center;
-          color: $success;
-          margin-bottom: 30px;
-        }
-      }
-    }
-  }
-}
-</style>
