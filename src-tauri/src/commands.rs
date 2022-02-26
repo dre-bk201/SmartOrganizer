@@ -1,4 +1,4 @@
-use std::{future::Future, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::{ListenerData, OrganizerState};
 use tauri::{Runtime, State, Window};
@@ -6,7 +6,6 @@ use tauri::{Runtime, State, Window};
 #[tauri::command]
 pub fn add_listener(listener: ListenerData, state: State<OrganizerState>) {
     let mut s = state.organizer.lock().unwrap();
-    println!("Adding Listener: {:#?}", listener);
     s.push(listener)
 }
 
@@ -18,7 +17,6 @@ pub fn update_listener(listener: ListenerData, state: State<OrganizerState>) {
 
 #[tauri::command]
 pub fn delete_listener(listener: ListenerData, state: State<OrganizerState>) {
-    println!("Deleting listener: {:?}", listener);
     let mut s = state.organizer.lock().unwrap();
     s.delete(listener)
 }
@@ -26,8 +24,6 @@ pub fn delete_listener(listener: ListenerData, state: State<OrganizerState>) {
 #[tauri::command(async)]
 pub fn organize<R: Runtime>(state: State<OrganizerState>, window: Window<R>) -> () {
     let mut s = state.organizer.lock().unwrap();
-    println!("-------------------------------------------------------Organizing-------------------------------------------------------");
-    // println!("{:#?}\n\n", s.get_data());
     s.organize(&window)
 }
 
@@ -43,7 +39,6 @@ pub fn dir_len(path: PathBuf) -> i32 {
 
 #[tauri::command]
 pub fn debug<R: Runtime>(arg: ListenerData, window: Window<R>) -> String {
-    println!("{:?}", arg);
     window.emit("jkl", "JKL").unwrap();
     format!("{:#?}", arg)
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{Runtime, Window};
 
+#[allow(dead_code)]
 use super::operations::Organizer;
 
 #[derive(Debug, Default)]
@@ -32,9 +33,7 @@ impl SmartOrganizer {
                     );
                 }
             }
-            // Self::parse(&data);
         }
-        // Emit a signal back to frontend
     }
 
     pub fn delete(&mut self, item: ListenerData) {
@@ -60,6 +59,7 @@ impl SmartOrganizer {
         Self::default()
     }
 }
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Action(pub String, pub String);
 
@@ -68,7 +68,7 @@ impl Action {
         Self(x.into(), y.into())
     }
 }
-
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListenerData {
     id: String,
@@ -107,21 +107,6 @@ impl ListenerData {
         }
     }
 }
-#[derive(Debug, Deserialize, Clone)]
-pub enum SearchType {
-    FileName(String),
-    FolderName(String),
-    FileExtension(String),
-    FileContent(String),
-    PathName(String),
-}
-#[derive(Debug, Deserialize, Clone)]
-pub enum Condition {
-    Includes(String),
-    NotIncludes(String),
-    ExactMatch(String),
-    IsNot(String),
-}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Rule {
@@ -130,15 +115,15 @@ pub struct Rule {
     pub text: String,
 }
 
-// impl Rule {
-//     pub fn from<T: Into<String>>(search_type: T, condition: T, text: T) -> Self {
-//         Self {
-//             search_type: SearchType(),
-//             condition: condition.into(),
-//             text: text.into(),
-//         }
-//     }
-// }
+impl Rule {
+    pub fn from<T: Into<String>>(search_type: T, condition: T, text: T) -> Self {
+        Self {
+            search_type: search_type.into(),
+            condition: condition.into(),
+            text: text.into(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Log {
