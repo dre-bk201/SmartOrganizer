@@ -3,30 +3,19 @@
 import DetailCard from "./DetailCard.vue";
 
 import { ref, onMounted, ComponentPublicInstance } from "vue";
-import { useStore } from "vuex";
 import { dialog } from "@tauri-apps/api";
+import { useStore } from "vuex";
+
+import { COPY, MOVE, DELETE, UNLINK, RENAME } from "../utils";
 
 const props = defineProps<{ action: [string, string]; idx: number }>();
 const store = useStore();
-
-const FILENAME = "File Name";
-const FILEEXTENSION = "File Extension";
-const FOLDERNAME = "Folder Name";
-const FILECONTENT = "File Content";
-const FILESIZE = "File Size";
-
-const MOVE = "MOVE";
-const COPY = "COPY";
-const RENAME = "RENAME";
-const UNLINK = "UNLINK";
-const DELETE = "DELETE";
 
 let rootRef = ref<ComponentPublicInstance | null>();
 
 const selectAction = async (e: Event, idx: number) => {
   let action = (<HTMLInputElement>e.target).value;
   let path: string | string[] | null = "";
-  console.log("Action: ", action);
 
   if (props.idx == idx) {
     const storeCommit = async (
@@ -58,7 +47,6 @@ const selectAction = async (e: Event, idx: number) => {
         break;
 
       default:
-        console.log("kdhfakjs");
         break;
     }
   }
@@ -71,10 +59,8 @@ onMounted(() => {
     let inputs: Array<HTMLInputElement> = root.querySelectorAll("input[name]");
     inputs.forEach((input) => {
       if (props.action[0] == input.value) {
-        console.log(input.value);
         input.checked = true;
       }
-      console.log(input);
     });
   }
 });
@@ -149,6 +135,7 @@ onMounted(() => {
             class="mr-2"
             :id="'RENAME-' + idx"
             type="radio"
+            disabled
             :name="'action-' + idx"
             value="RENAME"
           />
