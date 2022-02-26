@@ -110,6 +110,7 @@ onMounted(() => {
                     type="radio"
                     name="search_type"
                     value="File Size"
+                    disabled
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="File Size">File Size</label>
