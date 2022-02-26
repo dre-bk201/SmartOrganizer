@@ -65,16 +65,14 @@ export const getters = {
     }, 0);
 
     return total;
-    // state.listeners.forEach(listener => {
-    //   listener.
-    // })
   },
   last(state: State) {
     let len = state.listeners.length - 1;
-    let logs_len = state.listeners[len].logs.length - 1;
-    return state.listeners[len].logs[logs_len];
+    let logsLen = state.listeners[len].logs.length - 1;
+    return state.listeners[len].logs[logsLen];
   },
 };
+
 export const mutations = {
   addListener({ listeners }: State, payload: Listener) {
     listeners.push(payload);
