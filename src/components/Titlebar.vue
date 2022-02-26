@@ -13,11 +13,10 @@ const isDark = inject("isDark");
 const isMaximized = ref(false);
 
 // Computed
-const triggerClean = computed(() => store.getters.triggerClean);
-const log = computed(() => store.getters["listeners/listener"].last);
+const isCleaning = computed(() => store.getters.triggerClean);
+const log = computed(() => store.getters["listener/last"]);
 
 // Functions
-
 const close = () => appWindow.close();
 
 const minimize = () => appWindow.minimize();
@@ -29,7 +28,6 @@ const toggleTheme = () =>
   document.getElementById("app")?.classList.toggle("dark");
 
 // Lifecycle Methods
-
 onMounted(() => {
   appWindow.listen("tauri://resize", (q) => {
     appWindow.isMaximized().then((v) => (isMaximized.value = v));
@@ -42,9 +40,9 @@ onMounted(() => {
     data-tauri-drag-region
     class="h-8 bg-l_secondary dark:bg-d_secondary flex items-center pl-5 relative"
   >
-    <span data-tauri-drag-region class="text-gray-800 dark:text-[#b6b6b6]">{{
-      triggerClean ? log.path : ""
-    }}</span>
+    <span data-tauri-drag-region class="text-gray-800 dark:text-[#b6b6b6]">
+      {{ isCleaning ? "Path: " + log?.path : "" }}
+    </span>
     <Icon
       class="absolute right-36 hover:cursor-pointer"
       :fill="isDark ? '#b6b6b6' : 'black'"
