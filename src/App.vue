@@ -15,6 +15,7 @@ import { listen } from "@tauri-apps/api/event";
 // TODO Saves theming
 // TODO ListenerModal Animation
 // TODO Add 2 more months on chart if possible and refactor [Statistics Component]
+// TODO
 
 // Effects, Classes, Constants
 const store = useStore();

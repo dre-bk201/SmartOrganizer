@@ -131,7 +131,7 @@ impl<'a> FileOperations<'a> {
                         if self.path.exists() && !to.exists() {
                             match std::fs::copy(self.path, &to) {
                                 Ok(_) => send_log_to(&to, action),
-                                Err(e) => panic!("{:?}", e),
+                                Err(e) => println!("Error {} {:?}", action, e),
                             };
                         }
                     }
@@ -139,7 +139,7 @@ impl<'a> FileOperations<'a> {
                         if self.path.exists() && !to.exists() {
                             match std::fs::rename(self.path, &to) {
                                 Ok(_) => send_log_to(&to, action),
-                                Err(e) => panic!("{:?}", e),
+                                Err(e) => println!("Error {} {:?}", action, e),
                             }
                         }
                     }
@@ -147,7 +147,7 @@ impl<'a> FileOperations<'a> {
                         if self.path.exists() {
                             match trash::delete(&self.path) {
                                 Ok(_) => send_log_to(&to, action),
-                                Err(e) => panic!("{:?}", e),
+                                Err(e) => println!("Error {} {:?}", action, e),
                             }
                         }
                         // Send a signal to tauri
@@ -157,23 +157,26 @@ impl<'a> FileOperations<'a> {
                             if self.path.is_dir() {
                                 match std::fs::remove_dir(self.path) {
                                     Ok(_) => send_log_to(&to, action),
-                                    Err(e) => println!("{:?}", e),
+                                    Err(e) => println!("Error {} {:?}", action, e),
                                 }
                             } else if self.path.is_file() {
                                 match std::fs::remove_file(self.path) {
                                     Ok(_) => send_log_to(&to, action),
-                                    Err(e) => println!("{:?}", e),
+                                    Err(e) => println!("Error {} {:?}", action, e),
                                 }
                             }
                         }
                     }
 
-                    // "RENAME" => {
-                    //     // Based on if rename is
-                    //     let filename = Path::new(&self.path).file_name().unwrap();
-
-                    //     std::fs::rename(self.path, to)
-                    // }
+                    "RENAME" => {
+                        let to = PathBuf::from(dest);
+                        if self.path.exists() {
+                            match std::fs::rename(self.path, &to) {
+                                Ok(_) => send_log_to(&to, action),
+                                Err(e) => println!("Error {} {:?}", action, e),
+                            }
+                        }
+                    }
                     _ => {
                         unreachable!()
                     }
@@ -212,16 +215,19 @@ impl<'a> FileOperations<'a> {
         } else if search_type.contains("Content") {
             if path.is_file() {
                 let search_sqc = TwoWaySearcher::new(&to_match.as_bytes());
-                let f = std::fs::File::open(&path).unwrap();
-                let mut reader = BufReader::new(f);
+                let file = std::fs::File::open(&path).unwrap();
+                let mut reader = BufReader::new(file);
                 let mut content = Vec::new();
 
-                reader.read_to_end(&mut content).unwrap();
-                if let Some(_) = search_sqc.search_in(&content) {
-                    true
-                } else {
-                    false
+                let mut exists = false;
+
+                if let Some(_) = reader.read_to_end(&mut content).ok() {
+                    if let Some(_) = search_sqc.search_in(&content) {
+                        exists = true;
+                    }
                 }
+
+                exists
             } else {
                 false
             }

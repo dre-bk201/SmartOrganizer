@@ -107,8 +107,6 @@
 
 .options--grid {
   @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
-  /* grid-template-columns: auto auto auto auto; */
-  /* gap: 0px 10px; */
 }
 
 td {

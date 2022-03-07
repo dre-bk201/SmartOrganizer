@@ -135,7 +135,6 @@ onMounted(() => {
             class="mr-2"
             :id="'RENAME-' + idx"
             type="radio"
-            disabled
             :name="'action-' + idx"
             value="RENAME"
           />
