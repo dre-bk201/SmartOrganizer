@@ -173,5 +173,8 @@ let icons: Record<string, string> = {
 </script>
 
 <template>
-  <div v-html="icons[props.name]" :class="props.class"></div>
+  <div
+    v-html="icons[props.name == 'rename' ? 'move' : props.name]"
+    :class="props.class"
+  ></div>
 </template>
