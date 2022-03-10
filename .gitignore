@@ -3,3 +3,6 @@ node_modules
 dist
 dist-ssr
 *.local
+config.yaml
+generate_data.py
+package-lock.json
