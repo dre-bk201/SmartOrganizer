@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { Store } from "tauri-plugin-store-api";
+import { data } from "./test";
 import { v4 } from "uuid";
 
 const store = new Store(".data");
@@ -12,6 +13,7 @@ export interface Rule {
 
 export interface Log {
   id: string;
+  parent_id: string;
   path: string;
   destination: string;
   action: string;
@@ -51,12 +53,24 @@ export const initialListener: Listener = {
 export const namespaced = true;
 
 export const state = {
-  listeners: [],
+  listeners: [...data],
 };
 
 export const getters = {
-  getListeners(_state: State) {
+  listeners(state: State) {
     return state.listeners;
+  },
+
+  getById: (state: State) => (id: string) => {
+    return state.listeners.find((listener) => listener.id === id);
+  },
+
+  allLogs(state: State) {
+    let initialValue: Log[] = [];
+    return state.listeners.reduce(
+      (acc, val) => acc.concat(...val.logs),
+      initialValue
+    );
   },
 
   getNumOfLogs(state: State) {
@@ -65,11 +79,6 @@ export const getters = {
     }, 0);
 
     return total;
-  },
-  last(state: State) {
-    let len = state.listeners.length - 1;
-    let logsLen = state.listeners[len].logs.length - 1;
-    return state.listeners[len].logs[logsLen];
   },
 };
 
@@ -101,30 +110,23 @@ export const mutations = {
     });
 
     let listener = state.listeners.splice(idx, 1);
-    console.log("Removing ", listener[0]);
     invoke("delete_listener", { listener: listener[0] });
     store.delete(listener[0].id);
     store.save();
   },
 
   setState(state: State, loaded_state: State) {
-    console.log("Setting Mutation state");
-    console.log(loaded_state);
     state.listeners = loaded_state.listeners;
   },
 
   addLog(state: State, log: Log) {
     let idx = (state.listeners as Listener[]).findIndex((item) => {
-      console.log(log.id, item.id);
-      if (log.id == item.id) return true;
+      if (log.parent_id == item.id) return true;
       return false;
     });
-    console.log(idx);
-    console.log("Log: ", log);
 
     if (idx != -1) {
       state.listeners[idx].logs.push(log);
-      console.log(state.listeners[idx]);
       store.set(state.listeners[idx].id, state.listeners[idx]);
       store.save();
     }
@@ -148,13 +150,15 @@ export const actions = {
   },
 
   setState({ commit }: any, loaded_state: State) {
-    console.log("Setting Action state");
     commit("setState", loaded_state);
   },
 
   addLog({ commit, dispatch }: any, log: Log) {
-    console.log("Log: ", log);
     commit("addLog", log);
     dispatch("modal/addLog", log, { root: true });
+  },
+
+  getById({ commit }: any, id: string) {
+    commit("getById", id);
   },
 };
