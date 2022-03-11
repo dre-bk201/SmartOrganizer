@@ -3,7 +3,7 @@ import Icon from "./Icon.vue";
 import Navlink from "./Navlink.vue";
 import Broom from "./Broom.vue";
 
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
 import { v4 } from "uuid";
@@ -15,6 +15,11 @@ const route = useRoute();
 
 let isHovering = ref(false);
 let hoveringTimeout = ref<ReturnType<typeof setTimeout>>();
+
+// Computed
+const isValidHovering = computed(
+  () => isHovering.value && route.name != "Statistics"
+);
 
 // Functions
 const handleHoverEnter = (e: MouseEvent) => {
@@ -51,7 +56,7 @@ const updateList = (e: Event) => {
     @mouseover.self="handleHoverEnter"
     @mouseleave="handleHoverExit"
     :class="`nav ${
-      isHovering && route.name != 'Statistics' ? 'show' : ''
+      isValidHovering ? 'show' : ''
     } h-full relative bg-l_secondary dark:bg-d_secondary`"
   >
     <!-- Title -->
@@ -60,9 +65,7 @@ const updateList = (e: Event) => {
       <Broom />
       <h1
         :class="`${
-          isHovering && route.name != 'Statistics'
-            ? 'opacity-100 w-fit'
-            : 'opacity-0 w-0'
+          isValidHovering ? 'opacity-100 w-fit' : 'opacity-0 w-0'
         } h-6 pt-2`"
       >
         Smart Organizer
@@ -73,11 +76,11 @@ const updateList = (e: Event) => {
     <div class="search mt-5 px-3 flex justify-center relative items-center">
       <!-- Search Icon -->
       <Icon
-        :class="`absolute ${isHovering ? 'left-4' : 'left-[11px]'}`"
+        :class="`absolute ${isValidHovering ? 'left-4' : 'left-[11px]'}`"
         name="search"
-        :key="Number(isHovering)"
-        :width="isHovering ? '15' : '33'"
-        :height="isHovering ? '15' : '33'"
+        :key="Number(isValidHovering)"
+        :width="isValidHovering ? '15' : '33'"
+        :height="isValidHovering ? '15' : '33'"
       />
 
       <!-- Search Field -->
