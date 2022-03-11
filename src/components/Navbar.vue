@@ -7,7 +7,7 @@ import { ref } from "vue";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
 import { v4 } from "uuid";
-import { Listener, initialListener } from "../store/modules/listener";
+import { initialListener } from "../store/modules/listener";
 
 // Hooks
 const store = useStore();
@@ -31,7 +31,7 @@ const handleHoverExit = (e: MouseEvent) => {
 };
 
 const addListener = () => {
-  store.dispatch("listener/addListener", initialListener);
+  store.dispatch("listener/addListener", { ...initialListener, id: v4() });
 };
 
 const updateList = (e: Event) => {
@@ -56,6 +56,7 @@ const updateList = (e: Event) => {
   >
     <!-- Title -->
     <div class="title mt-5 mb-10 flex justify-center text-white text-xl">
+      <!-- Broom Icon -->
       <Broom />
       <h1
         :class="`${
@@ -70,21 +71,16 @@ const updateList = (e: Event) => {
 
     <!-- Search -->
     <div class="search mt-5 px-3 flex justify-center relative items-center">
+      <!-- Search Icon -->
       <Icon
-        v-show="isHovering && route.name != 'Statistics'"
-        class="absolute left-4"
+        :class="`absolute ${isHovering ? 'left-4' : 'left-[11px]'}`"
         name="search"
-        width="15"
-        height="15"
-      />
-      <Icon
-        v-show="!(isHovering && route.name != 'Statistics')"
-        class="absolute left-[11px]"
-        name="search"
-        width="30"
-        height="30"
+        :key="Number(isHovering)"
+        :width="isHovering ? '15' : '33'"
+        :height="isHovering ? '15' : '33'"
       />
 
+      <!-- Search Field -->
       <input
         :class="`${
           isHovering && route.name != 'Statistics'
@@ -125,10 +121,6 @@ const updateList = (e: Event) => {
         :isHovering="isHovering && route.name != 'Statistics'"
       />
     </div>
-    <!-- 
-    <button @click="toggleTheme" class="bg-white dark:bg-slate-500">
-      toggle theme
-    </button> -->
 
     <!-- Floating Action Button -->
     <div class="floating--button bottom-24 left-[calc(100%-1.75rem)]">
