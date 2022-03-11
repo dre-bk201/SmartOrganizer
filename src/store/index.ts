@@ -1,12 +1,13 @@
-import { createLogger, createStore } from "vuex";
+import { createStore } from "vuex";
 import * as listener from "./modules/listener";
 import * as modal from "./modules/modal";
+import * as settings from "./modules/settings";
 
 const store = createStore({
-  plugins: [createLogger()],
   modules: {
     listener,
     modal,
+    settings,
   },
   state: {
     dashboardSearch: "",
