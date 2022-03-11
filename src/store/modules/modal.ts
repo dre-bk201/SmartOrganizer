@@ -63,10 +63,8 @@ export const mutations = {
   },
 
   setAction(state: State, [action, idx, path]: [string, number, string]) {
-    console.log(state);
     (state.listener as Listener).actions[idx][0] = action;
     (state.listener as Listener).actions[idx][1] = path;
-    console.log(state);
   },
 
   createAction(state: State) {
@@ -117,7 +115,6 @@ export const actions = {
   },
 
   updateRuleByIdx({ commit }: any, payload: Rule & { idx: number }) {
-    console.log("Updating by index");
     commit("updateRuleByIdx", payload);
   },
 
