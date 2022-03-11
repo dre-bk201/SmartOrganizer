@@ -41,7 +41,7 @@ impl<'a, Q: Runtime> Organizer<'a, Q> {
     }
 
     pub fn from(window: &'a Window<Q>) -> Self {
-        Self { window: window }
+        Self { window }
     }
 
     pub fn get_window(&self) -> &Window<Q> {
@@ -50,7 +50,7 @@ impl<'a, Q: Runtime> Organizer<'a, Q> {
 
     pub fn sort<R: Runtime>(
         &self,
-        id: &String,
+        parent_id: &String,
         deep: &bool,
         path_str: &String,
         rules: &Vec<Rule>,
@@ -66,127 +66,171 @@ impl<'a, Q: Runtime> Organizer<'a, Q> {
             let res = rules
                 .iter()
                 .map(|rule| match rule.condition.as_str() {
-                    "Includes" => FileOperations::includes(&pathbuf, &rule.text, &rule.search_type),
+                    "Includes" => {
+                        FileOperations::<R>::includes(&pathbuf, &rule.text, &rule.search_type)
+                    }
                     "Not Includes" => {
-                        !FileOperations::includes(&pathbuf, &rule.text, &rule.search_type)
+                        !FileOperations::<R>::includes(&pathbuf, &rule.text, &rule.search_type)
                     }
                     "Exact Match" => {
-                        FileOperations::exact_match(&pathbuf, &rule.text, &rule.search_type)
+                        FileOperations::<R>::exact_match(&pathbuf, &rule.text, &rule.search_type)
                     }
 
                     "Is Not" => {
-                        !FileOperations::exact_match(&pathbuf, &rule.text, &rule.search_type)
+                        !FileOperations::<R>::exact_match(&pathbuf, &rule.text, &rule.search_type)
                     }
                     _ => unreachable!(),
                 })
                 .collect::<Vec<_>>();
 
-            let file_ops = FileOperations::from(&pathbuf, &actions);
+            let file_ops = FileOperations::from(&parent_id, &pathbuf, &actions, self.window);
 
             if selection == "All of the following" {
                 let is_match = Self::bool_ops(&res, BoolFunction::AND);
                 if is_match {
-                    file_ops.process(&is_match, id, self.get_window());
+                    file_ops.process(is_match, true);
                 }
             } else if selection == "Any of the following" {
                 let is_match = Self::bool_ops(&res, BoolFunction::OR);
                 if Self::bool_ops(&res, BoolFunction::OR) {
-                    file_ops.process(&is_match, id, self.get_window());
+                    file_ops.process(is_match, true);
                 }
             }
         }
     }
 }
 
-struct FileOperations<'a> {
+pub struct FileOperations<'a, R: Runtime> {
+    parent_id: &'a String,
     path: &'a PathBuf,
     actions: &'a Vec<Action>,
+    window: &'a Window<R>,
 }
 // TODO do not perform action if file already exists
 
-impl<'a> FileOperations<'a> {
-    pub fn process<R: Runtime>(&self, is_match: &bool, id: &String, window: &Window<R>) {
+use uuid::Uuid;
+
+impl<'a, Q: Runtime> FileOperations<'a, Q> {
+    // pub fn undo
+
+    pub fn send_log_to(&self, to: &PathBuf, kind: &String) {
+        let timestamp = Local::now();
+        self.window
+            .emit(
+                "logger",
+                Log::from(
+                    self.parent_id.to_owned(),
+                    Uuid::new_v4().to_string(),
+                    self.path.to_str().unwrap().to_owned(),
+                    to.to_str().unwrap().to_owned(),
+                    kind.to_owned(),
+                    timestamp.to_rfc2822(),
+                ),
+            )
+            .expect(&format!("Failed to send log from action: {}", kind));
+    }
+
+    pub fn match_against(
+        &self,
+        to: &PathBuf,
+        action: &String,
+        dest: Option<&String>,
+        enable_logging: bool,
+    ) {
+        match action.as_str() {
+            "COPY" => {
+                if self.path.exists() && !to.exists() {
+                    match std::fs::copy(self.path, &to) {
+                        Ok(_) => {
+                            if enable_logging {
+                                self.send_log_to(&to, action)
+                            }
+                        }
+                        Err(e) => println!("Error {} {:?}", action, e),
+                    };
+                }
+            }
+            "MOVE" => {
+                if self.path.exists() && !to.exists() {
+                    println!("{} - {}", self.path.display(), to.display());
+                    match std::fs::rename(self.path, &to) {
+                        Ok(_) => {
+                            if enable_logging {
+                                self.send_log_to(&to, action)
+                            }
+                        }
+                        Err(e) => println!("Error {} {:?}", action, e),
+                    }
+                }
+            }
+            "DELETE" => {
+                if self.path.exists() {
+                    match trash::delete(&self.path) {
+                        Ok(_) => {
+                            if enable_logging {
+                                self.send_log_to(&to, action)
+                            }
+                        }
+                        Err(e) => println!("Error {} {:?}", action, e),
+                    }
+                }
+            }
+            "UNLINK" => {
+                if self.path.exists() {
+                    if self.path.is_dir() {
+                        match std::fs::remove_dir(self.path) {
+                            Ok(_) => {
+                                if enable_logging {
+                                    self.send_log_to(&to, action)
+                                }
+                            }
+
+                            Err(e) => println!("Error {} {:?}", action, e),
+                        }
+                    } else if self.path.is_file() {
+                        match std::fs::remove_file(self.path) {
+                            Ok(_) => {
+                                if enable_logging {
+                                    self.send_log_to(&to, action)
+                                }
+                            }
+                            Err(e) => println!("Error {} {:?}", action, e),
+                        }
+                    }
+                }
+            }
+
+            "RENAME" => {
+                let to = PathBuf::from(dest.unwrap());
+                if self.path.exists() {
+                    match std::fs::rename(self.path, &to) {
+                        Ok(_) => {
+                            if enable_logging {
+                                self.send_log_to(&to, action)
+                            }
+                        }
+                        Err(e) => println!("Error {} {:?}", action, e),
+                    }
+                }
+            }
+            _ => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn process(&self, is_match: bool, enable_logging: bool) {
         for Action(action, dest) in self.actions {
             let filename = Path::new(&self.path).file_name().unwrap();
             let to = Path::new(&dest).join(filename);
-            let send_log_to = |to: &PathBuf, kind| {
-                let timestamp = Local::now();
-                window
-                    .emit(
-                        "logger",
-                        Log::from(
-                            id.to_owned(),
-                            self.path.to_str().unwrap().to_owned(),
-                            to.to_str().unwrap().to_owned(),
-                            action.to_owned(),
-                            timestamp.to_rfc2822(),
-                        ),
-                    )
-                    .expect(&format!("Failed to send log from action: {}", kind));
-            };
 
-            if *is_match {
-                match action.as_str() {
-                    "COPY" => {
-                        if self.path.exists() && !to.exists() {
-                            match std::fs::copy(self.path, &to) {
-                                Ok(_) => send_log_to(&to, action),
-                                Err(e) => println!("Error {} {:?}", action, e),
-                            };
-                        }
-                    }
-                    "MOVE" => {
-                        if self.path.exists() && !to.exists() {
-                            match std::fs::rename(self.path, &to) {
-                                Ok(_) => send_log_to(&to, action),
-                                Err(e) => println!("Error {} {:?}", action, e),
-                            }
-                        }
-                    }
-                    "DELETE" => {
-                        if self.path.exists() {
-                            match trash::delete(&self.path) {
-                                Ok(_) => send_log_to(&to, action),
-                                Err(e) => println!("Error {} {:?}", action, e),
-                            }
-                        }
-                        // Send a signal to tauri
-                    }
-                    "UNLINK" => {
-                        if self.path.exists() {
-                            if self.path.is_dir() {
-                                match std::fs::remove_dir(self.path) {
-                                    Ok(_) => send_log_to(&to, action),
-                                    Err(e) => println!("Error {} {:?}", action, e),
-                                }
-                            } else if self.path.is_file() {
-                                match std::fs::remove_file(self.path) {
-                                    Ok(_) => send_log_to(&to, action),
-                                    Err(e) => println!("Error {} {:?}", action, e),
-                                }
-                            }
-                        }
-                    }
-
-                    "RENAME" => {
-                        let to = PathBuf::from(dest);
-                        if self.path.exists() {
-                            match std::fs::rename(self.path, &to) {
-                                Ok(_) => send_log_to(&to, action),
-                                Err(e) => println!("Error {} {:?}", action, e),
-                            }
-                        }
-                    }
-                    _ => {
-                        unreachable!()
-                    }
-                }
+            if is_match {
+                self.match_against(&to, action, Some(dest), enable_logging);
             }
         }
     }
 }
 
-impl<'a> FileOperations<'a> {
+impl<'a, Q: Runtime> FileOperations<'a, Q> {
     fn parse_pathbuf(path: &PathBuf, kind: &str) -> String {
         if kind == "name" {
             path.file_name().unwrap().to_str().unwrap().to_lowercase()
@@ -201,8 +245,18 @@ impl<'a> FileOperations<'a> {
         }
     }
 
-    pub fn from(path: &'a PathBuf, actions: &'a Vec<Action>) -> Self {
-        Self { path, actions }
+    pub fn from(
+        parent_id: &'a String,
+        path: &'a PathBuf,
+        actions: &'a Vec<Action>,
+        window: &'a Window<Q>,
+    ) -> Self {
+        Self {
+            parent_id,
+            path,
+            actions,
+            window,
+        }
     }
 
     pub fn includes(path: &PathBuf, to_match: &String, search_type: &String) -> bool {
