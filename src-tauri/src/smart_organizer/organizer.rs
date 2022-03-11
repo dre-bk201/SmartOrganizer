@@ -127,6 +127,7 @@ impl Rule {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Log {
+    parent_id: String,
     id: String,
     path: String,
     destination: String,
@@ -136,6 +137,7 @@ pub struct Log {
 
 impl Log {
     pub fn from(
+        parent_id: String,
         id: String,
         path: String,
         destination: String,
@@ -143,6 +145,7 @@ impl Log {
         timestamp: String,
     ) -> Self {
         Self {
+            parent_id,
             id,
             path,
             destination,
