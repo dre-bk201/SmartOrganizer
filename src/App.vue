@@ -2,20 +2,21 @@
 import Navbar from "./components/Navbar.vue";
 import Titlebar from "./components/Titlebar.vue";
 
-import { onMounted, onBeforeMount, provide, ref, computed } from "vue";
+import { onMounted, onBeforeMount, provide, ref, computed, Ref } from "vue";
 import { useStore } from "vuex";
 import { Store } from "tauri-plugin-store-api";
 import { listen } from "@tauri-apps/api/event";
+import { Log } from "./store/modules/listener";
 
 // TODO Add colors to tailwind.config.css and remove static colors from elements
 // TODO settings screen
-// TODO a chip is pressed opens directory if valid open [Journal Component]
+// TODO a chip is pressed opens directory if valid open [Journal Component] and if not valid error popup
 // TODO ellipses overflow if rule text overflows
+// TODO undo button [Journal Component]
 // TODO reactive status icon
 // TODO Saves theming
 // TODO ListenerModal Animation
 // TODO Add 2 more months on chart if possible and refactor [Statistics Component]
-// TODO
 
 // Effects, Classes, Constants
 const store = useStore();
@@ -28,6 +29,7 @@ const observer = new MutationObserver((mutations) => {
 
 // Variables
 let isDark = ref(true);
+let logDetail: Ref<Log | undefined> = ref();
 
 // Methods
 const loadState = async () => {
@@ -45,6 +47,11 @@ provide(
   computed(() => isDark.value)
 );
 
+provide(
+  "logDetail",
+  computed(() => logDetail.value)
+);
+
 // Hooks
 onBeforeMount(async () => {
   // watches class attribute of #app to control theming
@@ -58,10 +65,16 @@ onBeforeMount(async () => {
 });
 
 onMounted(() => {
-  listen("logger", (log) => {
+  listen("logger", (log: any) => {
+    logDetail.value = <Log>log.payload;
+
     store.dispatch("triggerClean", true);
     store.dispatch("listener/addLog", log.payload);
-    setTimeout(() => store.dispatch("triggerClean", false), 2000);
+
+    setTimeout(() => {
+      logDetail.value = undefined;
+      store.dispatch("triggerClean", false);
+    }, 2500);
   });
 });
 </script>
