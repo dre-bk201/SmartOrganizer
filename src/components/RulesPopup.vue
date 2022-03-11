@@ -2,7 +2,7 @@
 import Modal from "./Modal.vue";
 import DetailCard from "./DetailCard.vue";
 import { useStore } from "vuex";
-import { inject, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 
 interface Props {
   idx?: number;
@@ -13,8 +13,6 @@ interface Props {
 
 const props = defineProps<Props>();
 const store = useStore();
-
-const isDark = inject("isDark");
 
 const sectionRef = ref<HTMLDivElement | null>();
 
@@ -28,8 +26,7 @@ const saveModal = () => {
 };
 
 onMounted(() => {
-  setTimeout(() => (state.value = JSON.parse(JSON.stringify(props))), 2000);
-  console.log("state: ", state.value);
+  state.value = JSON.parse(JSON.stringify(props));
 });
 </script>
 
