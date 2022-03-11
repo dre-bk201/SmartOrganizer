@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { Store } from "tauri-plugin-store-api";
-import { data } from "./test";
 import { v4 } from "uuid";
 
 const store = new Store(".data");
