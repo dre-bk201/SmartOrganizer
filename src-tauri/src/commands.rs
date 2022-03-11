@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use crate::{ListenerData, OrganizerState};
-use tauri::{Runtime, State, Window};
+use org::smart_organizer::{operations::FileOperations, organizer::Action};
+use tauri::{Manager, Runtime, State, Window};
 
 #[tauri::command]
 pub fn add_listener(listener: ListenerData, state: State<OrganizerState>) {
@@ -35,6 +36,26 @@ pub fn dir_len(path: PathBuf) -> i32 {
         return paths.collect::<Vec<_>>().len() as i32;
     }
     -1
+}
+
+#[tauri::command]
+pub fn undo_action(id: String, from: String, action: Action, handle: tauri::AppHandle) {
+    let window = handle.get_window("main").unwrap();
+    let Action(action, to) = action;
+    let to = PathBuf::from(&to);
+
+    match action.as_str() {
+        "RENAME" | "MOVE" => {
+            let actions = vec![Action::from("RENAME", &from)];
+            FileOperations::from(&id, &to, &actions, &window).process(true, false)
+        }
+
+        "COPY" => {
+            let actions = vec![Action::from("DELETE", &from)];
+            FileOperations::from(&id, &to, &actions, &window).process(true, false)
+        }
+        _ => (),
+    }
 }
 
 #[tauri::command]
