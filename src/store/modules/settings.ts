@@ -16,6 +16,14 @@ export const state: State = {
   chunks: 30,
 };
 
+export const getters = {
+  titlebar: (state: State) => state.titlebar,
+  isDark: (state: State) => state.isDark,
+  scanningInterval: (state: State) => state.scanningInterval,
+  pinNavbar: (state: State) => state.pinNavbar,
+  chunks: (state: State) => state.chunks,
+};
+
 export const mutations = {};
 
 export const actions = {};
