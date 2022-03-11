@@ -57,9 +57,3 @@ pub fn undo_action(id: String, from: String, action: Action, handle: tauri::AppH
         _ => (),
     }
 }
-
-#[tauri::command]
-pub fn debug<R: Runtime>(arg: ListenerData, window: Window<R>) -> String {
-    window.emit("jkl", "JKL").unwrap();
-    format!("{:#?}", arg)
-}
