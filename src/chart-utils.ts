@@ -117,7 +117,6 @@ export const generateChart = (chartType: string, listeners: Listener[]) => {
       },
     };
   } else if (chartType == "doughnut") {
-    console.log(labels, data);
     return {
       type: chartType,
       options: { responsive: true, maintainAspectRatio: false },
