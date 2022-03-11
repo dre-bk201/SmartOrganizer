@@ -53,7 +53,7 @@ export const initialListener: Listener = {
 export const namespaced = true;
 
 export const state = {
-  listeners: [...data],
+  listeners: [],
 };
 
 export const getters = {
