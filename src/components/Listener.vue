@@ -2,9 +2,9 @@
 import Icon from "./Icon.vue";
 import type { Listener, Rule, Action, Log } from "../store/modules/listener";
 
-import { useStore } from "vuex";
 import { computed, onActivated, onMounted, onUnmounted, ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
+import { useStore } from "vuex";
 
 import successIcon from "../assets/icons/success.png";
 import warningIcon from "../assets/icons/warning.svg";
@@ -131,6 +131,12 @@ onUnmounted(() => {
     class="listener w-full min-h-[5.4rem] rounded-md relative hover:cursor-pointer bg-l_white dark:bg-d_secondary dark:text-gray-300 mb-8"
   >
     <div
+      class="status--msg absolute right-3 text-xs bg-l_white dark:bg-d_secondary px-2 rounded-tl-md rounded-tr-md top-[-16.6px]"
+    >
+      {{ !enabled ? "Listener Not enabled" : "" }}
+    </div>
+
+    <div
       :class="`status--bar ${enabled ? 'bg-[#61FF5E]' : 'bg-l_secondary'}`"
     />
 
@@ -148,7 +154,7 @@ onUnmounted(() => {
 
       <div class="last-update flex items-center flex-col text-[0.65rem]">
         <img
-          :src="logs.length ? successIcon : warningIcon"
+          :src="logs.length && enabled ? successIcon : warningIcon"
           width="40"
           height="40"
         />
