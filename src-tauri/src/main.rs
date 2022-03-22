@@ -3,7 +3,9 @@
     windows_subsystem = "windows"
 )]
 
+use tauri::Manager;
 use tauri_plugin_store::PluginBuilder;
+use window_shadows::set_shadow;
 
 mod commands;
 use commands::{add_listener, delete_listener, dir_len, organize, undo_action, update_listener};
@@ -17,6 +19,14 @@ pub struct OrganizerState {
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            let window = app.get_window("main").unwrap();
+
+            #[cfg(any(target_os = "windows", target_os = "macos"))]
+            set_shadow(&window, true).unwrap();
+
+            Ok(())
+        })
         .plugin(PluginBuilder::default().build())
         .manage(OrganizerState {
             organizer: Mutex::new(SmartOrganizer::new()),
