@@ -3,6 +3,14 @@ import Modal from "./Modal.vue";
 import DetailCard from "./DetailCard.vue";
 import { useStore } from "vuex";
 import { onMounted, ref } from "vue";
+import {
+  FILECONTENT,
+  FILEEXTENSION,
+  FILENAME,
+  FILESIZE,
+  FOLDERNAME,
+  PATHNAME,
+} from "../utils/index";
 
 interface Props {
   idx?: number;
@@ -14,10 +22,11 @@ interface Props {
 const props = defineProps<Props>();
 const store = useStore();
 
+// Variables
+const state = ref<Props>(JSON.parse(JSON.stringify(props)));
 const sectionRef = ref<HTMLDivElement | null>();
 
-let state = ref<Props>(JSON.parse(JSON.stringify(props)));
-
+// Functions
 const closeModal = () => store.dispatch("modal/setCurrentRule", {});
 
 const saveModal = () => {
@@ -37,19 +46,22 @@ onMounted(() => {
         class="dialog w-[80%] h-[80%] max-h-[500px] max-w-[800px] relative rounded-xl bg-l_primary dark:bg-d_primary p-8 pt-5"
       >
         <div
-          class="left--block bg-l_primary rounded-bl-lg rounded-tl-lg dark:bg-d_primary w-[50%] h-full absolute left-0 top-0"
+          class="left--block bg-l_primary z-30 rounded-bl-lg rounded-tl-lg dark:bg-d_primary w-[50%] h-full absolute left-0 top-0"
         />
         <div
-          class="right--block rounded-tr-lg rounded-br bg-l_primary dark:bg-d_primary w-[50%] h-full absolute right-0 top-0"
+          class="right--block rounded-tr-lg z-30 rounded-br bg-l_primary dark:bg-d_primary w-[50%] h-full absolute right-0 top-0"
         />
-        <div class="container flex justify-end">
+        <div class="container absolute flex justify-end right-8">
           <button
             @click="closeModal"
             class="mr-5 bg-[#F3F3F3] dark:bg-d_secondary px-3 py-1 rounded-md"
           >
             Close
           </button>
-          <button @click="saveModal" class="bg-[#FF3B76] px-3 py-1 rounded-md">
+          <button
+            @click="saveModal"
+            class="bg-[#FF3B76] text-white px-3 py-1 rounded-md"
+          >
             Save
           </button>
         </div>
@@ -65,10 +77,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="File Name"
+                    :id="FILENAME"
                     type="radio"
                     name="search_type"
-                    value="File Name"
+                    :value="FILENAME"
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="File Name">File Name</label>
@@ -77,10 +89,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="File Extension"
+                    :id="FILEEXTENSION"
                     type="radio"
                     name="search_type"
-                    value="File Extension"
+                    :value="FILEEXTENSION"
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="File Extension"
@@ -91,10 +103,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Folder Name"
+                    :id="FOLDERNAME"
                     type="radio"
                     name="search_type"
-                    value="Folder Name"
+                    :value="FOLDERNAME"
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="Folder Name">Folder Name</label>
@@ -103,10 +115,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="File Size"
+                    :id="FILESIZE"
                     type="radio"
                     name="search_type"
-                    value="File Size"
+                    :value="FILESIZE"
                     disabled
                     v-model="state.search_type"
                   />
@@ -116,10 +128,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="File Content"
+                    :id="FILECONTENT"
                     type="radio"
                     name="search_type"
-                    value="File Content"
+                    :value="FILECONTENT"
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="File Content">File Content</label>
@@ -128,10 +140,10 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Path Name"
+                    :id="PATHNAME"
                     type="radio"
                     name="search_type"
-                    value="Path Name"
+                    :value="PATHNAME"
                     v-model="state.search_type"
                   />
                   <label class="text-lg" for="Path Name">Path Name </label>
@@ -198,6 +210,7 @@ onMounted(() => {
             </template>
           </DetailCard>
         </section>
+
         <input
           class="indent-8 w-full h-10 rounded-md outline-none bg-l_white dark:bg-d_secondary"
           type="text"
@@ -208,3 +221,10 @@ onMounted(() => {
     </template>
   </Modal>
 </template>
+
+<style scoped>
+button {
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+</style>
