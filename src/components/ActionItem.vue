@@ -11,50 +11,67 @@ import { COPY, MOVE, DELETE, UNLINK, RENAME } from "../utils";
 const props = defineProps<{ action: [string, string]; idx: number }>();
 const store = useStore();
 
+// Variables
 let rootRef = ref<ComponentPublicInstance | null>();
 
+// Functions
+const toggleInputValue = (input: HTMLInputElement) => {
+  if (!input.checked) input.checked = !input.checked;
+};
+
 const selectAction = async (e: Event, idx: number) => {
-  let action = (<HTMLInputElement>e.target).value;
-  let path: string | string[] | null = "";
+  const [input, label]: any = (<HTMLInputElement>e.target).closest(
+    "div"
+  )?.children;
 
-  if (props.idx == idx) {
-    const storeCommit = async (
-      action: string,
-      warn: boolean = true,
-      isFile: boolean = false
-    ) => {
-      if (!warn) store.commit("modal/setAction", [action, idx, ""]);
-      else {
-        if (!isFile) path = await dialog.open({ directory: true });
-        else path = await dialog.save({});
+  if (input) {
+    toggleInputValue(<HTMLInputElement>input);
 
-        if (path) store.commit("modal/setAction", [action, idx, path]);
+    let action = (<HTMLInputElement>input).value;
+    let path: string | string[] | null = "";
+
+    if (props.idx == idx) {
+      const storeCommit = async (
+        action: string,
+        warn: boolean = true,
+        isFile: boolean = false
+      ) => {
+        if (!warn) store.commit("modal/setAction", [action, idx, ""]);
+        else {
+          if (!isFile) path = await dialog.open({ directory: true });
+          else path = await dialog.save({});
+
+          if (path) store.commit("modal/setAction", [action, idx, path]);
+        }
+      };
+
+      switch (action) {
+        case COPY:
+        case MOVE:
+          await storeCommit(action);
+          break;
+        case RENAME:
+          await storeCommit(action, true, true);
+          break;
+
+        case DELETE:
+        case UNLINK:
+          await storeCommit(action, false);
+          break;
+
+        default:
+          break;
       }
-    };
-
-    switch (action) {
-      case COPY:
-      case MOVE:
-        await storeCommit(action);
-        break;
-      case RENAME:
-        await storeCommit(action, true, true);
-        break;
-
-      case DELETE:
-      case UNLINK:
-        await storeCommit(action, false);
-        break;
-
-      default:
-        break;
     }
   }
 };
 
+const removeAction = (idx: number) => store.dispatch("modal/removeAction", idx);
+
 onMounted(() => {
   let root = rootRef.value?.$el;
   let len = store.state.modal.listener.actions.length;
+
   for (let i = 0; i < len; i++) {
     let inputs: Array<HTMLInputElement> = root.querySelectorAll("input[name]");
     inputs.forEach((input) => {
@@ -73,7 +90,10 @@ onMounted(() => {
         <span class="header pl-3 text-sm"
           >Action to perform: {{ action[1] }}</span
         >
-        <button class="absolute right-6 text-xs hover:text-[#FF0303]">
+        <button
+          @click.stop="() => removeAction(idx)"
+          class="absolute right-6 text-xs hover:text-[#FF0303]"
+        >
           Remove
         </button>
       </div>
@@ -81,64 +101,61 @@ onMounted(() => {
 
     <template #content>
       <div class="options--grid px-2">
-        <div class="m-1">
+        <div @click.stop="selectAction($event, idx)" class="action--radio">
           <input
-            @click="selectAction($event, idx)"
             class="mr-2"
             :id="'MOVE-' + idx"
             type="radio"
             :name="'action-' + idx"
             value="MOVE"
           />
-          <label class="text-lg" :for="'MOVE-' + idx">MOVE</label>
+
+          <label class="text-lg">MOVE</label>
         </div>
 
-        <div class="m-1">
+        <div @click.stop="selectAction($event, idx)" class="action--radio">
           <input
-            @click="selectAction($event, idx)"
             class="mr-2"
             :id="'COPY-' + idx"
             type="radio"
             :name="'action-' + idx"
             value="COPY"
           />
-          <label class="text-lg" :for="'COPY-' + idx">COPY</label>
+          <label class="text-lg">COPY</label>
         </div>
 
-        <div class="m-1">
+        <div @click.stop="selectAction($event, idx)" class="action--radio">
           <input
-            @click="selectAction($event, idx)"
             class="mr-2"
             :id="'DELETE-' + idx"
             type="radio"
             :name="'action-' + idx"
             value="DELETE"
           />
-          <label class="text-lg" :for="'DELETE-' + idx">DELETE</label>
+          <label class="text-lg">DELETE</label>
         </div>
 
-        <div class="m-1">
+        <div @click.stop="selectAction($event, idx)" class="action--radio">
           <input
-            @click="selectAction($event, idx)"
+            @click.stop="selectAction($event, idx)"
             class="mr-2"
             :id="'UNLINK-' + idx"
             type="radio"
             :name="'action-' + idx"
             value="UNLINK"
           />
-          <label class="text-lg" :for="'UNLINK-' + idx">UNLINK</label>
+          <label class="text-lg">UNLINK</label>
         </div>
 
-        <div class="m-1">
+        <div @click.stop="selectAction($event, idx)" class="action--radio">
           <input
-            @click="selectAction($event, idx)"
             class="mr-2"
             :id="'RENAME-' + idx"
             type="radio"
             :name="'action-' + idx"
             value="RENAME"
           />
-          <label class="text-lg" :for="'RENAME-' + idx">RENAME</label>
+          <label class="text-lg">RENAME</label>
         </div>
       </div>
     </template>
