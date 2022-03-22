@@ -6,6 +6,7 @@ export const FILEEXTENSION = "File Extension";
 export const FOLDERNAME = "Folder Name";
 export const FILECONTENT = "File Content";
 export const FILESIZE = "File Size";
+export const PATHNAME = "Path Name";
 
 export const MOVE = "MOVE";
 export const COPY = "COPY";
