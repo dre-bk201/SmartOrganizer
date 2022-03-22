@@ -2,6 +2,7 @@
 import Icon from "./Icon.vue";
 import Navlink from "./Navlink.vue";
 import Broom from "./Broom.vue";
+import ThemeSwitch from "./ThemeSwitch.vue";
 
 import { computed, ref } from "vue";
 import { useStore } from "vuex";
@@ -9,7 +10,7 @@ import { useRoute } from "vue-router";
 import { v4 } from "uuid";
 import { initialListener } from "../store/modules/listener";
 
-// Hooks
+// Effects
 const store = useStore();
 const route = useRoute();
 
@@ -57,7 +58,7 @@ const updateList = (e: Event) => {
     @mouseleave="handleHoverExit"
     :class="`nav ${
       isValidHovering ? 'show' : ''
-    } h-full relative bg-l_secondary dark:bg-d_secondary`"
+    } h-full relative bg-l_secondary dark:bg-d_secondary flex flex-col`"
   >
     <!-- Title -->
     <div class="title mt-5 mb-10 flex justify-center text-white text-xl">
@@ -73,7 +74,7 @@ const updateList = (e: Event) => {
     </div>
 
     <!-- Search -->
-    <div class="search mt-5 px-3 flex justify-center relative items-center">
+    <div class="search px-3 flex justify-center relative items-center">
       <!-- Search Icon -->
       <Icon
         :class="`absolute ${isValidHovering ? 'left-4' : 'left-[11px]'}`"
@@ -126,10 +127,23 @@ const updateList = (e: Event) => {
     </div>
 
     <!-- Floating Action Button -->
-    <div class="floating--button bottom-24 left-[calc(100%-1.75rem)]">
+    <div class="floating--button bottom-32 left-[calc(100%-1.75rem)]">
       <button @click="addListener" class="bg-[#6C8DFF] p-2 rounded-full">
         <Icon name="plus" width="25" height="25" fill="white" />
       </button>
+    </div>
+
+    <div
+      @mouseover.self="handleHoverEnter"
+      @mouseleave="handleHoverExit"
+      class="grow"
+    ></div>
+
+    <div class="center relative bottom-5">
+      <span v-if="isValidHovering" class="pr-4 dark:text-gray-200">
+        Toggle Theme
+      </span>
+      <ThemeSwitch />
     </div>
   </div>
 </template>
