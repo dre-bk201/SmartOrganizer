@@ -12,11 +12,11 @@ export interface Rule {
 
 export interface Log {
   id: string;
-  parent_id: string;
   path: string;
-  destination: string;
   action: string;
+  parent_id: string;
   timestamp: string;
+  destination: string;
 }
 
 export type Action = [string, string];
