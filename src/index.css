@@ -63,7 +63,7 @@
 }
 
 .nav {
-  @apply min-w-[55px] w-[55px] pt-5;
+  @apply min-w-[60px] w-[60px] pt-5;
   transition: all 0.08s ease-in;
 }
 
@@ -74,6 +74,11 @@
 .status--bar {
   @apply w-full h-1 absolute top-0;
   border-radius: 5px 5px 0px 0px;
+}
+
+input[type="radio"],
+label {
+  @apply hover:cursor-pointer;
 }
 
 .listener {
@@ -169,4 +174,8 @@ th {
     #5096ff 7.05%,
     rgba(80, 150, 255, 0.4) 106.41%
   );
+}
+
+.action--radio {
+  @apply m-1 hover:cursor-pointer;
 }
