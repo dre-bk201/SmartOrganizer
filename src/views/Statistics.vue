@@ -28,7 +28,9 @@ const listeners = store.getters["listener/listeners"];
     <div
       class="detail h-[calc(100%-8px)] bg-l_white dark:bg-d_secondary w-[225px] mt-2 rounded-md px-4 mx-2 overflow-y-auto"
     >
-      <header class="text-center pt-6 pb-7 font-semibold text-2xl">
+      <header
+        class="text-center pt-6 pb-7 font-semibold text-2xl text-gray-600 dark:text-gray-100"
+      >
         Listener Usage
       </header>
 
