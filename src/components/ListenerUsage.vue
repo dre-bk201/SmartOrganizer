@@ -35,7 +35,7 @@ onMounted(() => {
 
 <template>
   <div
-    class="usage relative flex items-center rounded-xl bg-l_primary dark:bg-d_primary overflow-hidden mb-5 h-12"
+    class="usage relative text-gray-600 dark:text-gray-100 flex items-center rounded-xl bg-l_primary dark:bg-d_primary overflow-hidden mb-5 h-12"
   >
     <transition @enter="onEnter">
       <div v-show="animate" class="progress h-full" />

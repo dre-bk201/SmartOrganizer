@@ -63,10 +63,8 @@ export const mutations = {
   },
 
   setAction(state: State, [action, idx, path]: [string, number, string]) {
-    console.log(state);
     (state.listener as Listener).actions[idx][0] = action;
     (state.listener as Listener).actions[idx][1] = path;
-    console.log(state);
   },
 
   createAction(state: State) {
@@ -76,6 +74,9 @@ export const mutations = {
   addLog(state: State, log: Log) {
     (state.listener as Listener).logs.push(log);
   },
+
+  removeAction: (state: State, idx: number) =>
+    (state.listener as Listener).actions.splice(idx, 1),
 };
 
 export const actions = {
@@ -117,7 +118,6 @@ export const actions = {
   },
 
   updateRuleByIdx({ commit }: any, payload: Rule & { idx: number }) {
-    console.log("Updating by index");
     commit("updateRuleByIdx", payload);
   },
 
@@ -143,5 +143,9 @@ export const actions = {
   addLog({ commit, state }: any, log: Log) {
     if (((state as State).listener as Listener).id == log.id)
       commit("addLog", log);
+  },
+
+  removeAction: ({ commit }: any, idx: number) => {
+    commit("removeAction", idx);
   },
 };

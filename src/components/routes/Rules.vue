@@ -4,7 +4,6 @@ import RulesPopup from "../RulesPopup.vue";
 import Grammar from "../Grammar.vue";
 
 import { useStore } from "vuex";
-import { useRouter } from "vue-router";
 import { computed, ref, onMounted, ComponentPublicInstance, inject } from "vue";
 import { Rule } from "../../store/modules/listener";
 
@@ -14,9 +13,8 @@ import anime from "animejs";
 
 const store = useStore();
 
-const selectionRef = ref<ComponentPublicInstance<HTMLDivElement> | null>();
-
-const isDark = inject("isDark");
+// Variables
+let selectionRef = ref<ComponentPublicInstance<HTMLDivElement> | null>();
 
 // Computed
 const getRules = computed(() => store.state.modal.listener.rules);
@@ -24,6 +22,8 @@ const getRules = computed(() => store.state.modal.listener.rules);
 const getCurrentRule = computed(() => store.state.modal.currentRule);
 
 const getSelection = computed(() => store.state.modal.listener.selection);
+
+const isDark = computed(() => store.getters["config/isDark"]);
 
 // Functions
 const removeRule = (idx: number) => store.dispatch("modal/removeRule", idx);

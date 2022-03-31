@@ -55,8 +55,10 @@
     "windows": [
       {
         "title": "SmartOrganizer",
-        "width": 985,
-        "height": 670,
+        "width": 1000,
+        "height": 700,
+        "minHeight": 700,
+        "minWidth": 1000,
         "resizable": true,
         "transparent": true,
         "decorations": false,

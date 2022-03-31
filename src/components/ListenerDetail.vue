@@ -9,7 +9,7 @@ import Switch from "./Switch.vue";
 
 import { useStore } from "vuex";
 import { useRoute, useRouter } from "vue-router";
-import { computed, inject, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { dialog } from "@tauri-apps/api";
 import { Listener } from "../store/modules/listener";
 
@@ -17,14 +17,15 @@ const store = useStore();
 const route = useRoute();
 const router = useRouter();
 
-// inject
-const isDark = inject("isDark");
-
-const modalState = computed(() => store.state.modal.listener);
-const inputField = ref<HTMLInputElement | null>();
-
+// Variables
 let enableTextField = ref(false);
+let inputField = ref<HTMLInputElement | null>();
 
+// Computed
+const modalState = computed(() => store.state.modal.listener);
+const isDark = computed(() => store.getters["config/isDark"]);
+
+// Functions
 const closeDetailListener = () => store.dispatch("modal/closeListenerDetail");
 const saveOptions = () =>
   store.dispatch(

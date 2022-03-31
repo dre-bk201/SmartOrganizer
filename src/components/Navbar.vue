@@ -2,19 +2,27 @@
 import Icon from "./Icon.vue";
 import Navlink from "./Navlink.vue";
 import Broom from "./Broom.vue";
+import ThemeSwitch from "./ThemeSwitch.vue";
 
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
 import { v4 } from "uuid";
-import { Listener, initialListener } from "../store/modules/listener";
+import { initialListener } from "../store/modules/listener";
 
-// Hooks
+// Effects
 const store = useStore();
 const route = useRoute();
 
 let isHovering = ref(false);
 let hoveringTimeout = ref<ReturnType<typeof setTimeout>>();
+
+// Computed
+const isValidHovering = computed(() => {
+  let isPinned = store.getters["config/pinNavbar"] == "pin";
+  if (!isPinned) return isHovering.value && route.name != "Statistics";
+  return true && route.name != "Statistics";
+});
 
 // Functions
 const handleHoverEnter = (e: MouseEvent) => {
@@ -31,7 +39,7 @@ const handleHoverExit = (e: MouseEvent) => {
 };
 
 const addListener = () => {
-  store.dispatch("listener/addListener", initialListener);
+  store.dispatch("listener/addListener", { ...initialListener, id: v4() });
 };
 
 const updateList = (e: Event) => {
@@ -48,20 +56,19 @@ const updateList = (e: Event) => {
 <template>
   <div
     data-tauri-drag-region
-    @mouseover.self="handleHoverEnter"
+    @mouseenter="handleHoverEnter"
     @mouseleave="handleHoverExit"
     :class="`nav ${
-      isHovering && route.name != 'Statistics' ? 'show' : ''
-    } h-full relative bg-l_secondary dark:bg-d_secondary`"
+      isValidHovering ? 'show' : ''
+    } h-full relative bg-l_secondary dark:bg-d_secondary flex flex-col`"
   >
     <!-- Title -->
     <div class="title mt-5 mb-10 flex justify-center text-white text-xl">
+      <!-- Broom Icon -->
       <Broom />
       <h1
         :class="`${
-          isHovering && route.name != 'Statistics'
-            ? 'opacity-100 w-fit'
-            : 'opacity-0 w-0'
+          isValidHovering ? 'opacity-100 w-fit' : 'opacity-0 w-0'
         } h-6 pt-2`"
       >
         Smart Organizer
@@ -69,27 +76,20 @@ const updateList = (e: Event) => {
     </div>
 
     <!-- Search -->
-    <div class="search mt-5 px-3 flex justify-center relative items-center">
+    <div class="search px-3 flex justify-center relative items-center">
+      <!-- Search Icon -->
       <Icon
-        v-show="isHovering && route.name != 'Statistics'"
-        class="absolute left-4"
+        :class="`absolute ${isValidHovering ? 'left-4' : 'left-[11px]'}`"
         name="search"
-        width="15"
-        height="15"
-      />
-      <Icon
-        v-show="!(isHovering && route.name != 'Statistics')"
-        class="absolute left-[11px]"
-        name="search"
-        width="30"
-        height="30"
+        :key="Number(isValidHovering)"
+        :width="isValidHovering ? '15' : '33'"
+        :height="isValidHovering ? '15' : '33'"
       />
 
+      <!-- Search Field -->
       <input
         :class="`${
-          isHovering && route.name != 'Statistics'
-            ? 'opacity-100'
-            : 'opacity-0 flex justify-center'
+          isValidHovering ? 'opacity-100' : 'opacity-0 flex justify-center'
         } rounded-md bg-l_primary dark:bg-d_primary dark:text-gray-300 outline-none w-full indent-6 h-7 text-sm`"
         @input="updateList"
         type="text"
@@ -106,7 +106,7 @@ const updateList = (e: Event) => {
         name="Dashboard"
         path="/"
         icon="dashboard"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
 
       <!-- Journal Link -->
@@ -114,7 +114,7 @@ const updateList = (e: Event) => {
         name="Journal"
         path="/journal"
         icon="journal"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
 
       <!-- Statistics Link -->
@@ -122,19 +122,24 @@ const updateList = (e: Event) => {
         name="Statistics"
         path="/statistics"
         icon="statistics"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
     </div>
-    <!-- 
-    <button @click="toggleTheme" class="bg-white dark:bg-slate-500">
-      toggle theme
-    </button> -->
 
     <!-- Floating Action Button -->
-    <div class="floating--button bottom-24 left-[calc(100%-1.75rem)]">
+    <div class="floating--button bottom-32 left-[calc(100%-1.75rem)]">
       <button @click="addListener" class="bg-[#6C8DFF] p-2 rounded-full">
         <Icon name="plus" width="25" height="25" fill="white" />
       </button>
+    </div>
+
+    <div class="grow"></div>
+
+    <div class="center relative bottom-5">
+      <span v-if="isValidHovering" class="pr-4 dark:text-gray-200">
+        Toggle Theme
+      </span>
+      <ThemeSwitch />
     </div>
   </div>
 </template>

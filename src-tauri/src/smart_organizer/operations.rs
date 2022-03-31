@@ -5,6 +5,7 @@ use std::{
 };
 
 use chrono::Local;
+use serde::{Deserialize, Serialize};
 
 use super::organizer::{Action, Log, Rule};
 
@@ -13,7 +14,6 @@ use tauri::{Runtime, Window};
 use trash;
 
 use glob::{glob, PatternError};
-use std::fs::metadata;
 
 // TODO: Rename structs and package to something better
 pub struct Organizer<'a, R: Runtime> {
@@ -22,29 +22,27 @@ pub struct Organizer<'a, R: Runtime> {
 
 fn glob_search<T: AsRef<str>>(s: T, deep: &bool) -> Result<glob::Paths, PatternError> {
     if *deep {
-        let c = glob(&format!("{}/**/*", s.as_ref()))?;
-        Ok(c)
+        Ok(glob(&format!("{}/**/*", s.as_ref()))?)
     } else {
-        let c = glob(&format!("{}/*", s.as_ref()))?;
-        Ok(c)
+        Ok(glob(&format!("{}/*", s.as_ref()))?)
     }
 }
 
-enum BooleanOP {
+enum BoolFunction {
     AND,
     OR,
 }
 
 impl<'a, Q: Runtime> Organizer<'a, Q> {
-    fn bool_ops(items: &Vec<bool>, kind: BooleanOP) -> bool {
+    fn bool_ops(items: &Vec<bool>, kind: BoolFunction) -> bool {
         match kind {
-            BooleanOP::AND => items.iter().skip(1).fold(items[0], |a, b| a & b),
-            BooleanOP::OR => items.iter().skip(1).fold(items[0], |a, b| a | b),
+            BoolFunction::AND => items.iter().skip(1).fold(items[0], |a, b| a & b),
+            BoolFunction::OR => items.iter().skip(1).fold(items[0], |a, b| a | b),
         }
     }
 
     pub fn from(window: &'a Window<Q>) -> Self {
-        Self { window: window }
+        Self { window }
     }
 
     pub fn get_window(&self) -> &Window<Q> {
@@ -53,401 +51,300 @@ impl<'a, Q: Runtime> Organizer<'a, Q> {
 
     pub fn sort<R: Runtime>(
         &self,
-        id: &String,
+        parent_id: &String,
         deep: &bool,
         path_str: &String,
         rules: &Vec<Rule>,
         actions: &Vec<Action>,
         selection: &String,
     ) {
-        let c = glob_search(path_str, deep)
+        let search_result = glob_search(path_str, deep)
             .expect("Failed to parse glob pattern")
             .map(|b| b.expect("Failed to map and unwrap glob result"))
             .collect::<Vec<_>>();
 
-        for pathbuf in c.iter() {
+        for pathbuf in search_result.iter() {
             let res = rules
                 .iter()
                 .map(|rule| match rule.condition.as_str() {
-                    "Includes" => ConditionOps::includes(&pathbuf, &rule.text, &rule.search_type),
+                    "Includes" => {
+                        FileOperations::<R>::includes(&pathbuf, &rule.text, &rule.search_type)
+                    }
                     "Not Includes" => {
-                        ConditionOps::not_includes(&pathbuf, &rule.text, &rule.search_type)
+                        !FileOperations::<R>::includes(&pathbuf, &rule.text, &rule.search_type)
                     }
                     "Exact Match" => {
-                        ConditionOps::exact_match(&pathbuf, &rule.text, &rule.search_type)
+                        FileOperations::<R>::exact_match(&pathbuf, &rule.text, &rule.search_type)
                     }
-                    "Is Not" => ConditionOps::is_not(&pathbuf, &rule.text, &rule.search_type),
+
+                    "Is Not" => {
+                        !FileOperations::<R>::exact_match(&pathbuf, &rule.text, &rule.search_type)
+                    }
                     _ => unreachable!(),
                 })
                 .collect::<Vec<_>>();
 
-            let file_ops = FileOps::from(&pathbuf, &actions);
+            let file_ops =
+                FileOperations::from(&parent_id, &pathbuf, &actions, self.window, false, true);
 
             if selection == "All of the following" {
-                if Self::bool_ops(&res, BooleanOP::AND) {
-                    file_ops.process(&res, id, self.get_window());
+                let is_match = Self::bool_ops(&res, BoolFunction::AND);
+                if is_match {
+                    file_ops.process(is_match);
                 }
             } else if selection == "Any of the following" {
-                if Self::bool_ops(&res, BooleanOP::OR) {
-                    file_ops.process(&res, id, self.get_window());
+                let is_match = Self::bool_ops(&res, BoolFunction::OR);
+                if Self::bool_ops(&res, BoolFunction::OR) {
+                    file_ops.process(is_match);
                 }
             }
         }
     }
 }
 
-struct ConditionOps;
+pub struct FileOperations<'a, R: Runtime> {
+    parent_id: &'a String,
+    path: &'a PathBuf,
+    actions: &'a Vec<Action>,
+    window: &'a Window<R>,
+    enable_logging: bool,
+    enable_failure: bool,
+}
 
-impl ConditionOps {
+use uuid::Uuid;
+
+#[derive(Serialize, Clone)]
+struct FailureResponse {
+    is_success: bool,
+    message: String,
+}
+
+impl<'a, Q: Runtime> FileOperations<'a, Q> {
+    pub fn send_log_to(&self, to: &PathBuf, kind: &String) {
+        if self.enable_logging {
+            let timestamp = Local::now();
+            self.window
+                .emit(
+                    "logger",
+                    Log::from(
+                        self.parent_id.to_owned(),
+                        Uuid::new_v4().to_string(),
+                        self.path.to_str().unwrap().to_owned(),
+                        to.to_str().unwrap().to_owned(),
+                        kind.to_owned(),
+                        timestamp.to_rfc2822(),
+                    ),
+                )
+                .expect(&format!("Failed to send log from action: {}", kind));
+        }
+    }
+
+    pub fn send_failure_to(
+        &self,
+        to: &PathBuf,
+        action: &String,
+        is_success: bool,
+        msg: Option<String>,
+    ) {
+        if self.enable_failure {
+            let message = if msg.is_some() {
+                msg.unwrap()
+            } else {
+                format!("{} {}", to.to_str().unwrap(), action)
+            };
+
+            self.window
+                .emit(
+                    "actionFailure",
+                    FailureResponse {
+                        is_success,
+                        message,
+                    },
+                )
+                .expect("Failed to send failure")
+        }
+    }
+
+    // fn action_to_grammar()
+
+    pub fn match_against(&self, to: &PathBuf, action: &String, dest: Option<&String>) {
+        match action.as_str() {
+            "COPY" => {
+                if self.path.exists() && !to.exists() {
+                    if let Err(e) = std::fs::copy(self.path, to) {
+                        self.send_failure_to(to, action, false, None);
+                    } else {
+                        self.send_log_to(&to, action)
+                    }
+                }
+            }
+            "MOVE" => {
+                if self.path.exists() && !to.exists() {
+                    if let Err(e) = std::fs::rename(self.path, &to) {
+                        self.send_failure_to(to, action, false, None);
+                    } else {
+                        self.send_log_to(&to, action)
+                    }
+                } else {
+                    self.send_failure_to(to, action, false, Some(format!("")));
+                }
+            }
+            "DELETE" => {
+                if self.path.exists() {
+                    if let Err(_) = trash::delete(&self.path) {
+                        self.send_failure_to(self.path, action, false, None);
+                    } else {
+                        self.send_log_to(to, action)
+                    }
+                }
+            }
+            "UNLINK" => {
+                if self.path.exists() {
+                    if self.path.is_dir() {
+                        match std::fs::remove_dir(self.path) {
+                            Ok(_) => {
+                                if self.enable_logging {
+                                    self.send_log_to(&to, action)
+                                }
+                            }
+
+                            Err(e) => println!("Error {} {:?}", action, e),
+                        }
+                    } else if self.path.is_file() {
+                        match std::fs::remove_file(self.path) {
+                            Ok(_) => {
+                                if self.enable_logging {
+                                    self.send_log_to(&to, action)
+                                }
+                            }
+                            Err(e) => println!("Error {} {:?}", action, e),
+                        }
+                    }
+                }
+            }
+
+            "RENAME" => {
+                let to = PathBuf::from(dest.unwrap());
+                if self.path.exists() {
+                    if let Err(_) = std::fs::rename(self.path, &to) {
+                        self.send_failure_to(&to, action, false, None)
+                    } else {
+                        self.send_log_to(&to, action)
+                    }
+                } else {
+                    self.send_failure_to(
+                        &to,
+                        action,
+                        false,
+                        Some(format!("{} does not exist", to.to_str().unwrap())),
+                    );
+                }
+            }
+            _ => {
+                unreachable!()
+            }
+        }
+    }
+    pub fn process(&self, is_match: bool) {
+        for Action(action, dest) in self.actions {
+            let filename = Path::new(&self.path).file_name().unwrap();
+            let to = Path::new(&dest).join(filename);
+
+            if is_match {
+                self.match_against(&to, action, Some(dest));
+            }
+        }
+    }
+}
+
+impl<'a, Q: Runtime> FileOperations<'a, Q> {
     fn parse_pathbuf(path: &PathBuf, kind: &str) -> String {
         if kind == "name" {
             path.file_name().unwrap().to_str().unwrap().to_lowercase()
+        } else if kind == "ext" {
+            if let Some(ext) = path.extension() {
+                ext.to_str().unwrap().to_lowercase()
+            } else {
+                String::new()
+            }
         } else {
-            path.to_str().unwrap().to_lowercase()
+            unreachable!()
         }
     }
 
-    pub fn includes(pathbuf: &PathBuf, to_match: &String, search_type: &String) -> bool {
-        match &search_type[..] {
-            "File Name" => {
-                if pathbuf.is_file() {
-                    Self::parse_pathbuf(pathbuf, "name").contains(&to_match.to_lowercase())
-                } else {
-                    false
-                }
-            }
-            "Folder Name" => {
-                if pathbuf.is_dir() {
-                    Self::parse_pathbuf(pathbuf, "name").contains(&to_match.to_lowercase())
-                } else {
-                    false
-                }
-            }
-            "File Extension" => {
-                if pathbuf.is_file() {
-                    if let Some(f_ext) = pathbuf.extension() {
-                        f_ext
-                            .to_str()
-                            .unwrap()
-                            .to_lowercase()
-                            .contains(&to_match.to_lowercase())
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
-            "File Content" => {
-                if pathbuf.is_file() {
-                    let search_sqc = TwoWaySearcher::new(&to_match.as_bytes());
-                    let f = std::fs::File::open(&pathbuf).unwrap();
-                    let mut reader = BufReader::new(f);
-                    let mut content = Vec::new();
+    pub fn from(
+        parent_id: &'a String,
+        path: &'a PathBuf,
+        actions: &'a Vec<Action>,
+        window: &'a Window<Q>,
+        enable_failure: bool,
+        enable_logging: bool,
+    ) -> Self {
+        Self {
+            parent_id,
+            path,
+            actions,
+            window,
+            enable_failure,
+            enable_logging,
+        }
+    }
 
-                    reader.read_to_end(&mut content).unwrap();
+    pub fn includes(path: &PathBuf, to_match: &String, search_type: &String) -> bool {
+        if search_type.contains("Name") {
+            Self::parse_pathbuf(path, "name").contains(to_match)
+        } else if search_type.contains("Extension") {
+            Self::parse_pathbuf(path, "ext").contains(to_match)
+        } else if search_type.contains("Path") {
+            path.to_str().unwrap().contains(to_match)
+        } else if search_type.contains("Content") {
+            if path.is_file() {
+                let search_sqc = TwoWaySearcher::new(&to_match.as_bytes());
+                let file = std::fs::File::open(&path).unwrap();
+                let mut reader = BufReader::new(file);
+                let mut content = Vec::new();
+
+                let mut exists = false;
+
+                if let Some(_) = reader.read_to_end(&mut content).ok() {
                     if let Some(_) = search_sqc.search_in(&content) {
-                        true
-                    } else {
-                        false
+                        exists = true;
                     }
-                } else {
-                    false
                 }
-            }
-            "Path Name" => pathbuf.to_str().unwrap().contains(to_match),
 
-            // "File Size" => {
-            //     if metadata(&pathbuf).unwrap().is_file() {
-            //         if to_match.parse::<u64>().unwrap() > metadata(&pathbuf).unwrap().len() {}
-            //     }
-            // }
-            _ => unreachable!(),
+                exists
+            } else {
+                false
+            }
+        } else {
+            unreachable!()
         }
     }
-    pub fn not_includes(pathbuf: &PathBuf, to_match: &String, operation: &String) -> bool {
-        match operation.as_str() {
-            "File Name" => {
-                if pathbuf.is_file() {
-                    !Self::includes(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "Folder Name" => {
-                if metadata(&pathbuf).unwrap().is_dir() {
-                    !Self::includes(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "File Extension" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    !Self::includes(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "File Content" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    !Self::includes(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "Path Name" => !Self::includes(&pathbuf, &to_match, &operation),
-            // "File Size" => {
-            //     if metadata(&pathbuf).unwrap().is_file() {
-            //         if to_match.parse::<u64>().unwrap() > metadata(&pathbuf).unwrap().len() {}
-            //     }
-            // }
-            _ => unreachable!(),
-        }
-    }
-    pub fn exact_match(pathbuf: &PathBuf, to_match: &String, operation: &String) -> bool {
-        match &operation[..] {
-            "File Name" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    let fname = pathbuf.file_name().unwrap().to_str().unwrap();
+    pub fn exact_match(path: &PathBuf, to_match: &String, search_type: &String) -> bool {
+        if search_type.contains("Name") {
+            Self::parse_pathbuf(path, "name") == *to_match
+        } else if search_type.contains("Extension") {
+            Self::parse_pathbuf(path, "ext") == *to_match
+        } else if search_type.contains("Path") {
+            path.to_str().unwrap() == *to_match
+        } else if search_type.contains("Content") {
+            if path.is_file() {
+                let f = std::fs::File::open(&path).unwrap();
+                let mut reader = BufReader::new(f);
+                let mut content = Vec::new();
 
-                    fname == to_match
-                } else {
+                reader.read_to_end(&mut content).unwrap();
+
+                if content.len() != to_match.as_bytes().len() {
                     false
-                }
-            }
-            "Folder Name" => {
-                if metadata(&pathbuf).unwrap().is_dir() {
-                    let folder_name = pathbuf.file_name().unwrap().to_str().unwrap();
-
-                    folder_name == to_match
                 } else {
-                    false
+                    content == to_match.as_bytes()
                 }
+            } else {
+                false
             }
-            "File Extension" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    let f_ext = pathbuf.extension().unwrap().to_str().unwrap();
-
-                    f_ext == to_match
-                } else {
-                    false
-                }
-            }
-            "File Content" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    let f = std::fs::File::open(&pathbuf).unwrap();
-                    let mut reader = BufReader::new(f);
-                    let mut content = Vec::new();
-
-                    reader.read_to_end(&mut content).unwrap();
-
-                    if content.len() != to_match.as_bytes().len() {
-                        false
-                    } else {
-                        content == to_match.as_bytes()
-                    }
-                } else {
-                    false
-                }
-            }
-            "Path Name" => pathbuf.to_str().unwrap().contains(to_match),
-            // "File Size" => {
-            //     if metadata(&pathbuf).unwrap().is_file() {
-            //         if to_match.parse::<u64>().unwrap() > metadata(&pathbuf).unwrap().len() {}
-            //     }
-            // }
-            _ => unreachable!(),
-        }
-    }
-    pub fn is_not(pathbuf: &PathBuf, to_match: &String, operation: &String) -> bool {
-        match &operation[..] {
-            "File Name" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    !Self::exact_match(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "Folder Name" => {
-                if metadata(&pathbuf).unwrap().is_dir() {
-                    !Self::exact_match(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "File Extension" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    !Self::exact_match(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "File Content" => {
-                if metadata(&pathbuf).unwrap().is_file() {
-                    !Self::exact_match(&pathbuf, &to_match, &operation)
-                } else {
-                    false
-                }
-            }
-            "Path Name" => pathbuf.to_str().unwrap().contains(to_match),
-            // "File Size" => {
-            //     if metadata(&pathbuf).unwrap().is_file() {
-            //         if to_match.parse::<u64>().unwrap() > metadata(&pathbuf).unwrap().len() {}
-            //     }
-            // }
-            _ => unreachable!(),
-        }
-    }
-}
-
-struct FileOps<'a> {
-    path: &'a PathBuf,
-    actions: &'a Vec<Action>,
-}
-// TODO do not perform action if file already exists
-
-impl<'a> FileOps<'a> {
-    pub fn from(path: &'a PathBuf, actions: &'a Vec<Action>) -> Self {
-        Self { path, actions }
-    }
-    pub fn process<R: Runtime>(&self, matches: &Vec<bool>, id: &String, window: &Window<R>) {
-        for action in self.actions.iter() {
-            println!("Performing Action: {:?}", action);
-            println!("Matches: {:?}", matches);
-            for &result in matches.iter() {
-                if result {
-                    // TODO refactor
-                    match &action.0[..] {
-                        "COPY" => {
-                            let filename = Path::new(&self.path).file_name().unwrap();
-                            let to = Path::new(&action.1).join(filename);
-                            if self.path.exists() && !to.exists() {
-                                match std::fs::copy(self.path, &to) {
-                                    Ok(_) => {
-                                        let timestamp = Local::now();
-                                        window
-                                            .emit(
-                                                "logger",
-                                                Log::from(
-                                                    id.to_owned(),
-                                                    self.path.to_str().unwrap().to_owned(),
-                                                    to.to_str().unwrap().to_owned(),
-                                                    action.0.to_owned(),
-                                                    timestamp.to_rfc2822(),
-                                                ),
-                                            )
-                                            .expect("Failed to send log from action: COPY");
-                                    }
-
-                                    Err(e) => panic!("{:?}", e),
-                                };
-                            }
-                        }
-                        "MOVE" => {
-                            let filename = Path::new(&self.path).file_name().unwrap();
-                            let to = Path::new(&action.1).join(filename);
-                            if self.path.exists() && !to.exists() {
-                                match std::fs::rename(self.path, &to) {
-                                    Ok(_) => {
-                                        let timestamp = Local::now();
-                                        window
-                                            .emit(
-                                                "logger",
-                                                Log::from(
-                                                    id.to_owned(),
-                                                    self.path.to_str().unwrap().to_owned(),
-                                                    to.to_str().unwrap().to_owned(),
-                                                    action.0.to_owned(),
-                                                    timestamp.to_rfc2822(),
-                                                ),
-                                            )
-                                            .expect("Failed to send log from action: MOVE");
-                                    }
-                                    Err(e) => panic!("{:?}", e),
-                                }
-                            }
-                        }
-                        "DELETE" => {
-                            if self.path.exists() {
-                                // println!("Deleting: {:?}", matches);
-                                // let c = window.clone();
-                                match trash::delete(&self.path) {
-                                    Ok(_) => {
-                                        let timestamp = Local::now();
-                                        window
-                                            .clone()
-                                            .emit(
-                                                "logger",
-                                                Log::from(
-                                                    id.to_owned(),
-                                                    self.path.to_str().unwrap().to_owned(),
-                                                    "".to_owned(),
-                                                    action.0.to_owned(),
-                                                    timestamp.to_rfc2822(),
-                                                ),
-                                            )
-                                            .expect("Failed to send log from action: DELETE");
-                                    }
-                                    Err(e) => panic!("{:?}", e),
-                                }
-                            }
-                            // Send a signal to tauri
-                        }
-                        "UNLINK" => {
-                            if self.path.exists() {
-                                if metadata(self.path).unwrap().is_dir() {
-                                    match std::fs::remove_dir(self.path) {
-                                        Ok(_) => {
-                                            let timestamp = Local::now();
-                                            window
-                                                .emit(
-                                                    "logger",
-                                                    Log::from(
-                                                        id.to_owned(),
-                                                        self.path.to_str().unwrap().to_owned(),
-                                                        "".to_owned(),
-                                                        action.0.to_owned(),
-                                                        timestamp.to_rfc2822(),
-                                                    ),
-                                                )
-                                                .expect("Failed to send log from action: UNLINK");
-                                        }
-                                        Err(e) => println!("{:?}", e),
-                                    }
-                                } else if metadata(self.path).unwrap().is_file() {
-                                    match std::fs::remove_file(self.path) {
-                                        Ok(_) => {
-                                            let timestamp = Local::now();
-                                            window
-                                                .emit(
-                                                    "logger",
-                                                    Log::from(
-                                                        id.to_owned(),
-                                                        self.path.to_str().unwrap().to_owned(),
-                                                        "".to_owned(),
-                                                        action.0.to_owned(),
-                                                        timestamp.to_rfc2822(),
-                                                    ),
-                                                )
-                                                .expect("Failed to send log from action: UNLINK");
-                                        }
-                                        Err(e) => println!("{:?}", e),
-                                    }
-                                }
-                            }
-                        }
-
-                        // "RENAME" => {
-                        //     // Based on if rename is
-                        //     let filename = Path::new(&self.path).file_name().unwrap();
-
-                        //     std::fs::rename(self.path, to)
-                        // }
-                        _ => unreachable!(),
-                    }
-                    // }
-                }
-            }
+        } else {
+            unreachable!()
         }
     }
 }
