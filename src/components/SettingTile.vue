@@ -10,6 +10,7 @@ interface Props {
   expandable: boolean;
   children?: string;
   onclick?: Function;
+  expansion?: number;
 }
 
 const props = defineProps<Props>();
@@ -40,7 +41,9 @@ const toggleExpansion = () => {
       <!-- Icon -->
       <img class="ml-2 mr-5" :src="icon" width="35" />
       <div class="flex flex-col h-full justify-center">
-        <header>{{ title }}</header>
+        <header>
+          {{ title }}
+        </header>
 
         <span class="text-sm text-gray-600 mt-2 dark:text-gray-400">
           {{ caption }}
@@ -62,7 +65,9 @@ const toggleExpansion = () => {
     <Transition>
       <div
         v-if="isExpanded"
-        :class="`dark:text-gray-300 ${isExpanded ? 'h-10' : ''}`"
+        :class="`dark:text-gray-300 ${
+          isExpanded ? (expansion ? `fit-content` : 'h-10') : 'h-10'
+        }`"
       >
         <slot></slot>
       </div>
