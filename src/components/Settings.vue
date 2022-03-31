@@ -10,21 +10,23 @@ import chunk from "../assets/icons/chunk.svg";
 import nav from "../assets/icons/nav.svg";
 import titlebar from "../assets/icons/titlebar.svg";
 
+import osxDark from "../assets/icons/osx-dark.png";
+import osxLight from "../assets/icons/osx-light.png";
+import winLight from "../assets/icons/win-light.png";
+import winDark from "../assets/icons/win-dark.png";
+
 const store = useStore();
 
 // Variables
+
+const isDark = computed(() => store.getters["config/isDark"]);
 const settings = [
   {
     icon: titlebar,
     title: "Titlebar",
     caption: "Customizes titlebar style",
-    expandable: false,
-    onclick: () => {
-      const style = store.getters["config/titlebar"];
-
-      if (style == "win32") store.dispatch("config/setTitlebar", "macos");
-      else store.dispatch("config/setTitlebar", "win32");
-    },
+    expandable: true,
+    expansion: 450,
   },
   {
     icon: nav,
@@ -46,16 +48,6 @@ const settings = [
   },
 ];
 
-const value = ref(0);
-const htmlElements = {
-  Titlebar: null,
-  Chunks: () => {
-    const input = document.createElement("input");
-    input.value;
-    return input;
-  },
-};
-
 // Computed
 const isSettingsOpen = computed(() => store.getters["isSettingsOpen"]);
 
@@ -63,6 +55,14 @@ const config = computed(() => store.getters["config/config"]);
 
 // Functions
 const closeModal = () => store.dispatch("toggleSettings", false);
+
+const toggleNavbarOption = (option: string) => {
+  store.dispatch("config/setPinNavbar", option);
+};
+
+const toggleTitlebar = (option: string) => {
+  store.dispatch("config/setTitlebar", option);
+};
 
 type ActionType = "interval" | "chunks";
 const updateConfig = (e: Event, action: ActionType) => {
@@ -113,6 +113,63 @@ const updateConfig = (e: Event, action: ActionType) => {
           class="flex flex-col overflow-y-auto h-[calc(100%-30px)] relative"
         >
           <SettingsTile v-for="setting in settings" v-bind="{ ...setting }">
+            <!-- Titlebar -->
+            <div v-if="setting.title == 'Titlebar'">
+              <div class="flex flex-col">
+                <!-- Macintosh Option -->
+                <div class="ml-16 mb-4" @click="toggleTitlebar('macos')">
+                  <input
+                    :checked="config.titlebar == 'macos'"
+                    class="mr-1"
+                    type="radio"
+                    name="titlebar"
+                  />
+                  <label>Macintosh Style</label>
+                  <img :src="isDark ? osxDark : osxLight" />
+                </div>
+
+                <!-- Windows Option -->
+                <div class="ml-16 mb-2" @click="toggleTitlebar('win32')">
+                  <input
+                    :checked="config.titlebar == 'win32'"
+                    class="mr-1"
+                    type="radio"
+                    name="titlebar"
+                  />
+                  <label>Windows Style</label>
+                  <img :src="isDark ? winDark : winLight" alt="" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation Bar -->
+            <div
+              class="flex items-center pt-2"
+              v-if="setting.title == 'Navigation Bar'"
+            >
+              <div class="ml-16" @click="toggleNavbarOption('pin')">
+                <input
+                  :checked="config.pinNavbar == 'pin'"
+                  class="mr-1"
+                  type="radio"
+                  name="status"
+                  value="pin"
+                />
+                <span>Pin NavBar</span>
+              </div>
+
+              <div class="pl-10" @click="toggleNavbarOption('unpin')">
+                <input
+                  :checked="config.pinNavbar == 'unpin'"
+                  class="mr-1"
+                  type="radio"
+                  name="status"
+                  value="unpin"
+                />
+                <span>Unpin Navbar</span>
+              </div>
+            </div>
+            <!-- Scanning Interval -->
             <div
               v-if="setting.title == 'Scanning Interval'"
               class="flex h-full pb-1 pt-2"
@@ -129,6 +186,7 @@ const updateConfig = (e: Event, action: ActionType) => {
               {{ config.scanningInterval }}ms
             </div>
 
+            <!-- Chunks -->
             <div
               v-else-if="setting.title == 'Chunks'"
               class="flex h-full pb-1 pt-2"
