@@ -4,7 +4,7 @@ use tauri::{Runtime, Window};
 #[allow(dead_code)]
 use super::operations::Organizer;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 
 pub struct SmartOrganizer {
     data: Vec<ListenerData>,
