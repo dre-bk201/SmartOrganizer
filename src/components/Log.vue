@@ -28,12 +28,14 @@ const unsupported = computed(
   () => !["DELETE", "UNLINK"].includes(props.action)
 );
 
-const undoAction = () => {
-  invoke("undo_action", {
+const undoAction = async () => {
+  const response = await invoke("undo_action", {
     id: props.id,
     from: props.path,
     action: [props.action, props.destination],
   });
+
+  console.log(response);
 };
 
 const openDir = async (path: string) => await open(path);
@@ -149,5 +151,9 @@ const openDir = async (path: string) => await open(path);
 .slide-fade-leave-to {
   transform: translateX(20px);
   opacity: 0;
+}
+
+button {
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.25);
 }
 </style>
