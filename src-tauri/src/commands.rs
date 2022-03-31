@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use crate::{ListenerData, OrganizerState};
 use org::smart_organizer::{operations::FileOperations, organizer::Action};
-use tauri::{Manager, Runtime, State, Window};
+use serde::Serialize;
+use tauri::{Manager, State};
 
 #[tauri::command]
 pub fn add_listener(listener: ListenerData, state: State<OrganizerState>) {
@@ -23,9 +24,14 @@ pub fn delete_listener(listener: ListenerData, state: State<OrganizerState>) {
 }
 
 #[tauri::command(async)]
-pub fn organize<R: Runtime>(state: State<OrganizerState>, window: Window<R>) -> () {
-    let mut s = state.organizer.lock().unwrap();
-    s.organize(&window)
+pub fn organize<'a>(state: State<'a, OrganizerState>, app_handle: tauri::AppHandle) -> () {
+    let mut q = state.organizer.lock().unwrap().clone();
+
+    std::thread::spawn(move || {
+        if let Some(window) = app_handle.get_window("main") {
+            q.organize(&window);
+        }
+    });
 }
 
 #[tauri::command]
@@ -47,12 +53,12 @@ pub fn undo_action(id: String, from: String, action: Action, handle: tauri::AppH
     match action.as_str() {
         "RENAME" | "MOVE" => {
             let actions = vec![Action::from("RENAME", &from)];
-            FileOperations::from(&id, &to, &actions, &window).process(true, false)
+            FileOperations::from(&id, &to, &actions, &window, true, false).process(true);
         }
 
         "COPY" => {
             let actions = vec![Action::from("DELETE", &from)];
-            FileOperations::from(&id, &to, &actions, &window).process(true, false)
+            FileOperations::from(&id, &to, &actions, &window, true, false).process(true);
         }
         _ => (),
     }
