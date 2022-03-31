@@ -18,9 +18,11 @@ let isHovering = ref(false);
 let hoveringTimeout = ref<ReturnType<typeof setTimeout>>();
 
 // Computed
-const isValidHovering = computed(
-  () => isHovering.value && route.name != "Statistics"
-);
+const isValidHovering = computed(() => {
+  let isPinned = store.getters["config/pinNavbar"] == "pin";
+  if (!isPinned) return isHovering.value && route.name != "Statistics";
+  return true && route.name != "Statistics";
+});
 
 // Functions
 const handleHoverEnter = (e: MouseEvent) => {
@@ -54,7 +56,7 @@ const updateList = (e: Event) => {
 <template>
   <div
     data-tauri-drag-region
-    @mouseover.self="handleHoverEnter"
+    @mouseenter="handleHoverEnter"
     @mouseleave="handleHoverExit"
     :class="`nav ${
       isValidHovering ? 'show' : ''
@@ -87,9 +89,7 @@ const updateList = (e: Event) => {
       <!-- Search Field -->
       <input
         :class="`${
-          isHovering && route.name != 'Statistics'
-            ? 'opacity-100'
-            : 'opacity-0 flex justify-center'
+          isValidHovering ? 'opacity-100' : 'opacity-0 flex justify-center'
         } rounded-md bg-l_primary dark:bg-d_primary dark:text-gray-300 outline-none w-full indent-6 h-7 text-sm`"
         @input="updateList"
         type="text"
@@ -106,7 +106,7 @@ const updateList = (e: Event) => {
         name="Dashboard"
         path="/"
         icon="dashboard"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
 
       <!-- Journal Link -->
@@ -114,7 +114,7 @@ const updateList = (e: Event) => {
         name="Journal"
         path="/journal"
         icon="journal"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
 
       <!-- Statistics Link -->
@@ -122,7 +122,7 @@ const updateList = (e: Event) => {
         name="Statistics"
         path="/statistics"
         icon="statistics"
-        :isHovering="isHovering && route.name != 'Statistics'"
+        :isHovering="isValidHovering"
       />
     </div>
 
@@ -133,11 +133,7 @@ const updateList = (e: Event) => {
       </button>
     </div>
 
-    <div
-      @mouseover.self="handleHoverEnter"
-      @mouseleave="handleHoverExit"
-      class="grow"
-    ></div>
+    <div class="grow"></div>
 
     <div class="center relative bottom-5">
       <span v-if="isValidHovering" class="pr-4 dark:text-gray-200">
