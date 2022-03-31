@@ -8,6 +8,7 @@ import { useStore } from "vuex";
 import { Store } from "tauri-plugin-store-api";
 import { listen } from "@tauri-apps/api/event";
 import { Log } from "./store/modules/listener";
+import { useToast, POSITION, TYPE } from "vue-toastification";
 import anime from "animejs";
 
 // TODO Add colors to tailwind.config.css and remove static colors from elements
@@ -22,6 +23,7 @@ import anime from "animejs";
 
 // Effects, Classes, Constants
 const store = useStore();
+const toast = useToast();
 const tauriStore = new Store(".data");
 const configStore = new Store(".config");
 
@@ -127,6 +129,14 @@ onBeforeMount(async () => {
       logDetail.value = undefined;
       store.dispatch("triggerClean", false);
     }, 2500);
+  });
+
+  listen("actionFailure", (response: any) => {
+    toast(response.payload.message, {
+      position: POSITION.BOTTOM_RIGHT,
+      type: TYPE.ERROR,
+    });
+    console.log("Failure Response: ", response);
   });
 
   await loadConfig();
