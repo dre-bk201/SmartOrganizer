@@ -9,7 +9,7 @@ const initialState: State = loadState.reduce(
   {
     isDark: false,
     titlebar: "macos",
-    pinNavbar: "hover",
+    pinNavbar: "pin",
     scanningInterval: 5000,
     chunks: 30,
   }
@@ -20,7 +20,7 @@ type OS = "win32" | "macos" | "auto";
 interface State {
   isDark: boolean;
   titlebar: OS;
-  pinNavbar: "show" | "hide" | "hover";
+  pinNavbar: "pin" | "unpin";
   scanningInterval: number;
   chunks: number;
 }
@@ -65,6 +65,11 @@ export const mutations = {
     config.set("scanningInterval", interval);
     config.save();
   },
+  setPinNavbar: (state: State, option: "pin" | "unpin") => {
+    state.pinNavbar = option;
+    config.set("pinNavbar", option);
+    config.save();
+  },
 };
 
 export const actions = {
@@ -80,4 +85,7 @@ export const actions = {
 
   setInterval: ({ commit }: any, interval: number) =>
     commit("setInterval", interval),
+
+  setPinNavbar: ({ commit }: any, option: "pin" | "unpin") =>
+    commit("setPinNavbar", option),
 };
