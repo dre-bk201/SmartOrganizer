@@ -10,7 +10,7 @@ edition = "2021"
 rust-version = "1.57"
 
 [lib]
-name = "org"
+name = "smartorganizer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,14 +30,15 @@ git = "https://github.com/tauri-apps/tauri-plugin-store"
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.0.0-rc.4", features = ["api-all"] }
+tauri = { version = "1.0.0-rc.5", features = ["api-all"] }
 
 glob = "0.3.0"
-memmem="0.1.1"
-trash="2.0.4"
-window-shadows = "0.1.0"
-uuid = { version = "0.8", features = ["v4"] }
+notify = "4.0.17"
+sliceslice = "0.4.1"
+trash="2.1.2"
+uuid = { version = "1.0.0", features = ["v4"] }
 chrono = "0.4.19"
+window-shadows = "0.1.0"
 
 
 [features]
@@ -47,3 +48,6 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[dev-dependencies]
+pretty_assertions = "1.2.1"
