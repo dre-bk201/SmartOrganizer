@@ -1,5 +1,7 @@
 import { Store } from "tauri-plugin-store-api";
 
+import { State, OS } from "../../interfaces/store/config";
+
 const config = new Store(".config");
 
 const loadState: Array<[string, unknown]> = await config.entries();
@@ -14,16 +16,6 @@ const initialState: State = loadState.reduce(
     chunks: 30,
   }
 );
-
-type OS = "win32" | "macos" | "auto";
-
-interface State {
-  isDark: boolean;
-  titlebar: OS;
-  pinNavbar: "pin" | "unpin";
-  scanningInterval: number;
-  chunks: number;
-}
 
 export const namespaced = true;
 

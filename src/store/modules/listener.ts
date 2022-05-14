@@ -1,41 +1,9 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { Store } from "tauri-plugin-store-api";
 import { v4 } from "uuid";
+import { Listener, State, Log } from "../../interfaces/store/listener";
 
 const store = new Store(".data");
-
-export interface Rule {
-  search_type: string;
-  condition: string;
-  text: string;
-}
-
-export interface Log {
-  id: string;
-  path: string;
-  action: string;
-  parent_id: string;
-  timestamp: string;
-  destination: string;
-}
-
-export type Action = [string, string];
-
-export interface Listener {
-  id: string;
-  deep: boolean;
-  title: string;
-  enabled: boolean;
-  paths: Array<string>;
-  selection: string;
-  rules: Array<Rule>;
-  actions: Array<Action>;
-  logs: Array<Log>;
-}
-
-export interface State {
-  listeners: Array<Listener>;
-}
 
 export const initialListener: Listener = {
   id: v4(),
@@ -43,7 +11,7 @@ export const initialListener: Listener = {
   enabled: false,
   title: "",
   paths: [],
-  selection: "Any of the following",
+  selection: "Any",
   rules: [],
   actions: [],
   logs: [],
@@ -60,6 +28,7 @@ export const getters = {
     return state.listeners;
   },
 
+  // refactor: Change from using `find` to `findIndex`
   getById: (state: State) => (id: string) => {
     return state.listeners.find((listener) => listener.id === id);
   },
@@ -87,6 +56,8 @@ export const mutations = {
     store.set(payload.id, payload);
     store.save();
   },
+
+  // updateDeep({listener}:)
 
   updateListener(state: State, payload: Listener) {
     let idx = state.listeners.findIndex((item) => {

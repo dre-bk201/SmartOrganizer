@@ -1,4 +1,9 @@
-import { Listener, Log, Rule } from "./listener";
+import {
+  Listener,
+  Log,
+  Rule,
+  SelectionType,
+} from "../../interfaces/store/listener";
 
 interface State {
   listener: Listener | {};
@@ -33,7 +38,7 @@ export const mutations = {
     (state.listener as Listener).title = payload;
   },
 
-  removePath(state: State, idx: number) {
+  removeMonitorPath(state: State, idx: number) {
     (state.listener as Listener).paths.splice(idx, 1);
   },
 
@@ -58,7 +63,7 @@ export const mutations = {
     (state.listener as Listener).rules.push(rule);
   },
 
-  setSelection(state: State, payload: string) {
+  setSelection(state: State, payload: SelectionType) {
     (state.listener as Listener).selection = payload;
   },
 
@@ -101,8 +106,8 @@ export const actions = {
     commit("updateTitle", payload);
   },
 
-  removePath({ commit }: any, idx: number) {
-    commit("removePath", idx);
+  removeMonitorPath({ commit }: any, idx: number) {
+    commit("removeMonitorPath", idx);
   },
 
   addMonitorPath({ commit }: any, path: string) {
@@ -132,7 +137,8 @@ export const actions = {
       text: "",
     });
   },
-  setSelection({ commit }: any, payload: string) {
+
+  setSelection({ commit }: any, payload: SelectionType) {
     commit("setSelection", payload);
   },
 
