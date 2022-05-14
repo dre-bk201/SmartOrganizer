@@ -3,7 +3,7 @@ import Modal from "./Modal.vue";
 import SettingsTile from "./SettingTile.vue";
 
 import { useStore } from "vuex";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 
 import scan from "../assets/icons/scan.svg";
 import chunk from "../assets/icons/chunk.svg";

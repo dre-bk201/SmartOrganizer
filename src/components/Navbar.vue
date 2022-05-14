@@ -15,18 +15,23 @@ const store = useStore();
 const route = useRoute();
 
 let isHovering = ref(false);
+let isAddHovering = ref(false);
 let hoveringTimeout = ref<ReturnType<typeof setTimeout>>();
 
 // Computed
 const isValidHovering = computed(() => {
   let isPinned = store.getters["config/pinNavbar"] == "pin";
-  if (!isPinned) return isHovering.value && route.name != "Statistics";
-  return true && route.name != "Statistics";
+  if (!isPinned)
+    return (
+      isHovering.value && route.name != "Statistics" && !isAddHovering.value
+    );
+  return true && route.name != "Statistics" && !isAddHovering.value;
 });
 
 // Functions
 const handleHoverEnter = (e: MouseEvent) => {
   if (e.target) {
+    console.log("Is hovering over parent");
     hoveringTimeout.value = setTimeout(() => (isHovering.value = true), 500);
   }
 };
@@ -127,7 +132,11 @@ const updateList = (e: Event) => {
     </div>
 
     <!-- Floating Action Button -->
-    <div class="floating--button bottom-32 left-[calc(100%-1.75rem)]">
+    <div
+      @mouseover="isAddHovering = true"
+      @mouseleave="isAddHovering = false"
+      class="floating--button bottom-32 left-[calc(100%-1.75rem)]"
+    >
       <button @click="addListener" class="bg-[#6C8DFF] p-2 rounded-full">
         <Icon name="plus" width="25" height="25" fill="white" />
       </button>

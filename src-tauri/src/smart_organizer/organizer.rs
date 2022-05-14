@@ -37,8 +37,9 @@ impl SmartOrganizer {
     }
 
     pub fn delete(&mut self, item: ListenerData) {
-        let idx = self.data.iter().position(|val| *val.id == item.id).unwrap();
-        self.data.remove(idx);
+        if let Some(idx) = self.data.iter().position(|val| *val.id == item.id) {
+            self.data.remove(idx);
+        }
     }
 
     pub fn push(&mut self, listener: ListenerData) {

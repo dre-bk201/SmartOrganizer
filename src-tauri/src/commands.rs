@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use crate::{ListenerData, OrganizerState};
 use org::smart_organizer::{operations::FileOperations, organizer::Action};
-use serde::Serialize;
 use tauri::{Manager, State};
 
 #[tauri::command]
@@ -13,8 +12,11 @@ pub fn add_listener(listener: ListenerData, state: State<OrganizerState>) {
 
 #[tauri::command]
 pub fn update_listener(listener: ListenerData, state: State<OrganizerState>) {
-    let mut s = state.organizer.lock().unwrap();
-    s.replace(listener);
+    let s = state.organizer.clone();
+
+    std::thread::spawn(move || {
+        s.lock().unwrap().replace(listener);
+    });
 }
 
 #[tauri::command]
@@ -25,11 +27,11 @@ pub fn delete_listener(listener: ListenerData, state: State<OrganizerState>) {
 
 #[tauri::command(async)]
 pub fn organize<'a>(state: State<'a, OrganizerState>, app_handle: tauri::AppHandle) -> () {
-    let mut q = state.organizer.lock().unwrap().clone();
+    let q = state.organizer.clone();
 
     std::thread::spawn(move || {
         if let Some(window) = app_handle.get_window("main") {
-            q.organize(&window);
+            q.lock().unwrap().organize(&window);
         }
     });
 }

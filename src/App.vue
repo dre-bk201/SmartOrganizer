@@ -145,13 +145,10 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div
-    class="main--layout w-screen h-screen flex rounded-lg overflow-hidden bg-l_secondary dark:bg-d_secondary"
-  >
+  <div class="main--layout w-screen h-screen flex rounded-lg overflow-hidden bg-l_secondary dark:bg-d_secondary">
     <Transition @enter="onEnter" @leave="onLeave">
       <Settings />
     </Transition>
-
     <Navbar />
 
     <div class="w-full flex flex-col">

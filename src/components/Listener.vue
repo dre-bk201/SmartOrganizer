@@ -95,7 +95,7 @@ const showListenerDetail = (e: MouseEvent) => {
 
 // Lifecycle Methods
 onMounted(async () => {
-  invoke("add_listener", { listener: props });
+  // invoke("add_listener", { listener: props });
 
   listenerInterval.value = setInterval(async () => {
     if (props.enabled) {

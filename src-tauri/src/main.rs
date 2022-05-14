@@ -11,10 +11,10 @@ mod commands;
 use commands::{add_listener, delete_listener, dir_len, organize, undo_action, update_listener};
 
 use org::smart_organizer::organizer::{ListenerData, SmartOrganizer};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 pub struct OrganizerState {
-    pub organizer: Mutex<SmartOrganizer>,
+    pub organizer: Arc<Mutex<SmartOrganizer>>,
 }
 
 fn main() {
@@ -29,7 +29,7 @@ fn main() {
         })
         .plugin(PluginBuilder::default().build())
         .manage(OrganizerState {
-            organizer: Mutex::new(SmartOrganizer::new()),
+            organizer: Arc::new(Mutex::new(SmartOrganizer::new())),
         })
         .invoke_handler(tauri::generate_handler![
             add_listener,
