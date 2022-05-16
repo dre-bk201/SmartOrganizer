@@ -1,18 +1,18 @@
-import { computed, reactive, ref } from "vue";
+import { reactive } from "vue";
 import { appWindow } from "@tauri-apps/api/window";
-
-export const FILENAME = "File Name";
-export const FILEEXTENSION = "File Extension";
-export const FOLDERNAME = "Folder Name";
-export const FILECONTENT = "File Content";
-export const FILESIZE = "File Size";
-export const PATHNAME = "Path Name";
 
 export const MOVE = "MOVE";
 export const COPY = "COPY";
 export const RENAME = "RENAME";
 export const UNLINK = "UNLINK";
 export const DELETE = "DELETE";
+
+export const FILESIZE = "FileSize";
+export const FILECONTENT = "FileContent";
+export const FILENAME = "FileName";
+export const FILEEXTENSION = "FileExtension";
+export const FOLDERNAME = "FolderName";
+export const PATHNAME = "PathName";
 
 export const useFetchList = (
   arr: Array<any>,
@@ -42,7 +42,6 @@ const resizeCallers = {
 
 let { width, height } = await appWindow.innerSize();
 
-console.log("Recalling this package");
 const dimensions = reactive({
   appWindow,
   width: width,
@@ -51,7 +50,7 @@ const dimensions = reactive({
   height: height,
   id: 0,
   isMaximized: false,
-  unlisten: (): void => {},
+  unlisten: (): void => { },
 });
 
 export const useDimensions = () => {
@@ -68,9 +67,9 @@ export const useDimensions = () => {
       })
       .then(
         (unlisten) =>
-          (dimensions.unlisten = () => {
-            unlisten();
-          })
+        (dimensions.unlisten = () => {
+          unlisten();
+        })
       );
     resizeCallers.count = 1;
   }
