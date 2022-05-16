@@ -11,7 +11,7 @@ import { useStore } from "vuex";
 import { useRoute, useRouter } from "vue-router";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { dialog } from "@tauri-apps/api";
-import { Listener } from "../store/modules/listener";
+import { Listener } from "../interfaces/store/listener";
 
 const store = useStore();
 const route = useRoute();
@@ -57,16 +57,16 @@ const floatingButtonAction = async () => {
       break;
     case "Rules":
       let idx = store.state.modal.listener.rules.length;
-      store.dispatch("modal/addRule");
+      store.dispatch("modal/addListenerRule");
       store.dispatch("modal/setCurrentRule", {
         idx,
-        search_type: "",
+        searchType: "",
         condition: "",
         text: "",
       });
       break;
     case "Action":
-      store.dispatch("modal/createAction");
+      store.dispatch("modal/addListenerAction");
       break;
   }
 };

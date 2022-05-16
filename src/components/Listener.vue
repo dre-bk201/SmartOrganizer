@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import Icon from "./Icon.vue";
-import type { Listener, Rule, Action, Log } from "../store/modules/listener";
+import type {
+  SelectionType,
+  Listener,
+  Rule,
+  Action,
+  Log,
+  ListenerData,
+} from "../interfaces/store/listener";
 
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -14,18 +21,18 @@ interface Props extends Listener {
   deep: boolean;
   enabled: boolean;
   title: string;
-  paths: Array<string>;
-  selection: string;
+  paths: string[];
+  selection: SelectionType;
   rules: Array<Rule>;
-  actions: Array<Action>;
-  logs: Array<Log>;
+  actions: Action[];
+  logs: Log[];
 }
 
 const props = defineProps<Props>();
 const store = useStore();
 
-let listenerInterval = ref<ReturnType<typeof setInterval>>();
 let isBusy = ref(false);
+let listenerInterval = ref<ReturnType<typeof setInterval>>();
 
 const end = (arr: Array<any>): any | undefined => {
   // returns the last element
@@ -94,47 +101,36 @@ const showListenerDetail = (e: MouseEvent) => {
 };
 
 // Lifecycle Methods
-onMounted(async () => {
-  // invoke("add_listener", { listener: props });
+onMounted(() => {
+  let listener: ListenerData = {
+    id: props.id,
+    deep: props.deep,
+    enabled: props.enabled,
+    paths: props.paths,
+    selection: props.selection,
+    rules: props.rules, actions: props.actions
+  }
 
-  listenerInterval.value = setInterval(async () => {
-    if (props.enabled) {
-      if (!isBusy.value) {
-        console.log("invoking");
-        isBusy.value = true;
-        await invoke("organize");
-        isBusy.value = false;
-      }
-    }
-  }, scanningInterval.value);
+  invoke("add_listener", { listener });
+
 });
 
-onUnmounted(() => {
-  clearInterval(listenerInterval.value);
-});
 </script>
 
 <template>
-  <div
-    @click="showListenerDetail"
-    class="listener w-full min-h-[5.4rem] rounded-md relative hover:cursor-pointer bg-l_white dark:bg-d_secondary dark:text-gray-300 mb-8"
-  >
+  <div @click="showListenerDetail"
+    class="listener w-full min-h-[5.4rem] rounded-md relative hover:cursor-pointer bg-l_white dark:bg-d_secondary dark:text-gray-300 mb-8">
     <div
-      class="status--msg absolute right-3 text-xs bg-l_white dark:bg-d_secondary px-2 rounded-tl-md rounded-tr-md top-[-16.6px]"
-    >
+      class="status--msg absolute right-3 text-xs bg-l_white dark:bg-d_secondary px-2 rounded-tl-md rounded-tr-md top-[-16.6px]">
       {{ !enabled ? "Listener Not enabled" : "" }}
     </div>
 
-    <div
-      :class="`status--bar ${enabled ? 'bg-[#61FF5E]' : 'bg-l_secondary'}`"
-    />
+    <div :class="`status--bar ${enabled ? 'bg-[#61FF5E]' : 'bg-l_secondary'}`" />
 
     <div class="content h-full flex items-center pr-5">
       <Icon class="ml-4" name="folder" fill="#6C8DFF" width="65" height="65" />
 
-      <div
-        class="content-text flex-1 flex flex-col h-[80%] justify-around text-2xl pl-6"
-      >
+      <div class="content-text flex-1 flex flex-col h-[80%] justify-around text-2xl pl-6">
         <h2 class="title-xyz">
           {{ title }}
         </h2>
@@ -142,18 +138,13 @@ onUnmounted(() => {
       </div>
 
       <div class="last-update flex items-center flex-col text-[0.65rem]">
-        <img
-          :src="logs.length && enabled ? successIcon : warningIcon"
-          width="40"
-          height="40"
-        />
+        <img :src="logs.length && enabled ? successIcon : warningIcon" width="40" height="40" />
         <span>Last Updated {{ isToday || isYesterday ? "" : "At" }}</span>
         <span>{{ formatDate }}</span>
       </div>
     </div>
     <div
-      class="listener-amt absolute right-[-8px] w-6 h-6 bottom-[-8px] shadow-md shadow-[#00000040] center text-xs text-l_white bg-[#6C8DFF] rounded-full p-2"
-    >
+      class="listener-amt absolute right-[-8px] w-6 h-6 bottom-[-8px] shadow-md shadow-[#00000040] center text-xs text-l_white bg-[#6C8DFF] rounded-full p-2">
       {{ paths.length }}
     </div>
   </div>

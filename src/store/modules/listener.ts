@@ -1,7 +1,12 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { Store } from "tauri-plugin-store-api";
 import { v4 } from "uuid";
-import { Listener, State, Log } from "../../interfaces/store/listener";
+import {
+  Listener,
+  State,
+  Log,
+  ListenerData,
+} from "../../interfaces/store/listener";
 
 const store = new Store(".data");
 
@@ -57,17 +62,25 @@ export const mutations = {
     store.save();
   },
 
-  // updateDeep({listener}:)
-
   updateListener(state: State, payload: Listener) {
-    let idx = state.listeners.findIndex((item) => {
-      if (item.id == payload.id) return true;
-      return false;
-    });
+    let idx = state.listeners.findIndex((item) => item.id == payload.id);
 
     if (idx != -1) {
       state.listeners[idx] = payload;
-      invoke("update_listener", { listener: payload });
+
+      let listener: ListenerData = {
+        id: payload.id,
+        deep: payload.deep,
+        actions: payload.actions,
+        enabled: payload.enabled,
+        paths: payload.paths,
+        rules: payload.rules,
+        selection: payload.selection,
+      };
+      // Updates rust backend
+      invoke("update_listener", { listener });
+
+      // Saves state on modification
       store.set(payload.id, payload);
       store.save();
     }
@@ -80,7 +93,7 @@ export const mutations = {
     });
 
     let listener = state.listeners.splice(idx, 1);
-    invoke("delete_listener", { listener: listener[0] });
+    invoke("remove_listener", { listener: listener[0] });
     store.delete(listener[0].id);
     store.save();
   },
@@ -89,7 +102,7 @@ export const mutations = {
     state.listeners = loaded_state.listeners;
   },
 
-  addLog(state: State, log: Log) {
+  addListenerLog(state: State, log: Log) {
     let idx = (state.listeners as Listener[]).findIndex((item) => {
       if (log.parent_id == item.id) return true;
       return false;
@@ -123,9 +136,9 @@ export const actions = {
     commit("setState", loaded_state);
   },
 
-  addLog({ commit, dispatch }: any, log: Log) {
-    commit("addLog", log);
-    dispatch("modal/addLog", log, { root: true });
+  addListenerLog({ commit, dispatch }: any, log: Log) {
+    commit("addListenerLog", log);
+    dispatch("modal/addListenerLog", log, { root: true });
   },
 
   getById({ commit }: any, id: string) {

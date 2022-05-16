@@ -18,11 +18,10 @@ export const state: State = {
 };
 
 export const mutations = {
-  toggleActive(_state: State) {
-    let c = _state.listener as Listener;
-    _state.listener = {
-      ..._state.listener,
-      enabled: !(_state.listener as Listener).enabled,
+  toggleActive(state: State) {
+    state.listener = {
+      ...state.listener,
+      enabled: !(state.listener as Listener).enabled,
     };
   },
 
@@ -59,28 +58,31 @@ export const mutations = {
     (state.listener as Listener).rules[payload.idx] = rule;
   },
 
-  addRule(state: State, rule: Rule) {
+  addListenerRule(state: State, rule: Rule) {
     (state.listener as Listener).rules.push(rule);
   },
 
-  setSelection(state: State, payload: SelectionType) {
+  setListenerSelectionType(state: State, payload: SelectionType) {
     (state.listener as Listener).selection = payload;
   },
 
-  setAction(state: State, [action, idx, path]: [string, number, string]) {
+  setListenerAction(
+    state: State,
+    [action, idx, path]: [string, number, string]
+  ) {
     (state.listener as Listener).actions[idx][0] = action;
     (state.listener as Listener).actions[idx][1] = path;
   },
 
-  createAction(state: State) {
+  addListenerAction(state: State) {
     (state.listener as Listener).actions.push(["", ""]);
   },
 
-  addLog(state: State, log: Log) {
+  addListenerLog(state: State, log: Log) {
     (state.listener as Listener).logs.push(log);
   },
 
-  removeAction: (state: State, idx: number) =>
+  removeListenerAction: (state: State, idx: number) =>
     (state.listener as Listener).actions.splice(idx, 1),
 };
 
@@ -89,6 +91,7 @@ export const actions = {
     commit("toggleActive");
   },
 
+  // Sets Modal listener to whichever listener is selected
   setListener({ commit }: any, payload: Listener) {
     commit("setListener", payload);
   },
@@ -97,6 +100,7 @@ export const actions = {
     commit("closeListenerDetail");
   },
 
+  // Closes `ListenerDetail` and updates the correct `Listener`
   saveOptions({ dispatch, commit }: any, payload: Listener) {
     dispatch("listener/updateListener", payload, { root: true });
     commit("closeListenerDetail");
@@ -126,32 +130,32 @@ export const actions = {
     commit("updateRuleByIdx", payload);
   },
 
-  setAction({ commit }: any, payload: [string, number, string]) {
-    commit("setAction", payload);
+  setListenerAction({ commit }: any, payload: [string, number, string]) {
+    commit("setListenerAction", payload);
   },
 
-  async addRule({ commit }: any) {
-    commit("addRule", {
-      search_type: "",
+  async addListenerRule({ commit }: any) {
+    commit("addListenerRule", {
+      searchType: "",
       condition: "",
       text: "",
     });
   },
 
-  setSelection({ commit }: any, payload: SelectionType) {
-    commit("setSelection", payload);
+  setListenerSelectionType({ commit }: any, payload: SelectionType) {
+    commit("setListenerSelectionType", payload);
   },
 
-  createAction({ commit }: any) {
-    commit("createAction");
+  addListenerAction({ commit }: any) {
+    commit("addListenerAction");
   },
 
-  addLog({ commit, state }: any, log: Log) {
+  addListenerLog({ commit, state }: any, log: Log) {
     if (((state as State).listener as Listener).id == log.id)
-      commit("addLog", log);
+      commit("addListenerLog", log);
   },
 
-  removeAction: ({ commit }: any, idx: number) => {
-    commit("removeAction", idx);
+  removeListenerAction: ({ commit }: any, idx: number) => {
+    commit("removeListenerAction", idx);
   },
 };

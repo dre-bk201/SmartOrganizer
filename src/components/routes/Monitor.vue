@@ -15,7 +15,8 @@ const getPaths = computed(() => store.state.modal.listener.paths);
 const isDark = computed(() => store.getters["config/isDark"]);
 
 // Functions
-const removePath = (idx: number) => store.dispatch("modal/removePath", idx);
+const removeMonitorPath = (idx: number) =>
+  store.dispatch("modal/removeMonitorPath", idx);
 
 const openPath = async (path: string) => await shell.open(path);
 
@@ -35,7 +36,7 @@ onMounted(() => {});
         <header class="header relative flex items-center p-[3px]">
           <span class="header pl-3 text-sm">Monitoring Path</span>
           <button
-            @click.stop="removePath(idx)"
+            @click.stop="removeMonitorPath(idx)"
             class="absolute right-6 text-xs hover:text-[#FF0303]"
           >
             Remove
