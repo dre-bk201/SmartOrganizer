@@ -7,9 +7,10 @@ import { onBeforeMount, provide, ref, computed, Ref } from "vue";
 import { useStore } from "vuex";
 import { Store } from "tauri-plugin-store-api";
 import { listen } from "@tauri-apps/api/event";
-import { Log } from "./store/modules/listener";
+import { Log } from "./interfaces/store/listener";
 import { useToast, POSITION, TYPE } from "vue-toastification";
 import anime from "animejs";
+import { invoke } from "@tauri-apps/api";
 
 // TODO Add colors to tailwind.config.css and remove static colors from elements
 // TODO settings screen
@@ -119,11 +120,15 @@ onBeforeMount(async () => {
     if (!app?.classList.contains("dark")) app?.classList.add("dark");
   } else app?.classList.remove("dark");
 
+  // Starts listening for fsevents
+  invoke("start_receiver");
+
+  // Listens for logs and change the store
   listen("logger", (log: any) => {
     logDetail.value = <Log>log.payload;
 
     store.dispatch("triggerClean", true);
-    store.dispatch("listener/addLog", log.payload);
+    store.dispatch("listener/addListenerLog", log.payload);
 
     setTimeout(() => {
       logDetail.value = undefined;

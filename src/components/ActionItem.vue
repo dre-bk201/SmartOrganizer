@@ -36,12 +36,13 @@ const selectAction = async (e: Event, idx: number) => {
         warn: boolean = true,
         isFile: boolean = false
       ) => {
-        if (!warn) store.commit("modal/setAction", [action, idx, ""]);
+        if (!warn) store.commit("modal/setListenerAction", [action, idx, ""]);
         else {
           if (!isFile) path = await dialog.open({ directory: true });
           else path = await dialog.save({});
 
-          if (path) store.commit("modal/setAction", [action, idx, path]);
+          if (path)
+            store.commit("modal/setListenerAction", [action, idx, path]);
         }
       };
 
@@ -66,7 +67,8 @@ const selectAction = async (e: Event, idx: number) => {
   }
 };
 
-const removeAction = (idx: number) => store.dispatch("modal/removeAction", idx);
+const removeListenerAction = (idx: number) =>
+  store.dispatch("modal/removeListenerAction", idx);
 
 onMounted(() => {
   let root = rootRef.value?.$el;
@@ -91,7 +93,7 @@ onMounted(() => {
           >Action to perform: {{ action[1] }}</span
         >
         <button
-          @click.stop="() => removeAction(idx)"
+          @click.stop="() => removeListenerAction(idx)"
           class="absolute right-6 text-xs hover:text-[#FF0303]"
         >
           Remove

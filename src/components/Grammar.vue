@@ -3,7 +3,7 @@ import anime from "animejs";
 import { onMounted } from "vue";
 
 interface Props {
-  search_type: string;
+  searchType: string;
   condition: string;
   text: string;
 }
@@ -27,7 +27,7 @@ onMounted(() => {
       >If</span
     >
     <span class="grammar mr-4 text-[#5ccbff] text-5xl font-adine">{{
-      search_type
+      searchType
     }}</span>
     <span class="grammar mr-4 text-[#ff3f85] text-5xl font-adine">{{
       condition
