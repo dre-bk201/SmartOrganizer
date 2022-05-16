@@ -381,7 +381,7 @@ impl SmartOrganizer {
             FolderName => {
                 if is_dir {
                     let foldername = path.file_name().unwrap().to_str().unwrap();
-                    return foldername.to_lowercase() == to_match;
+                    return foldername.to_lowercase().contains(&to_match);
                 }
             }
 
