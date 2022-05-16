@@ -11,7 +11,6 @@ use window_shadows::set_shadow;
 mod commands;
 use commands::{add_listener, dir_len, remove_listener, start_receiver, update_listener};
 
-// use org::smart_organizer::organizer::{ListenerData, SmartOrganizer};
 use std::sync::{Arc, Mutex};
 
 static mut IS_RECVING: bool = false;
