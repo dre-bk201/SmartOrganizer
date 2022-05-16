@@ -152,7 +152,6 @@ impl SmartOrganizer {
 
                             // Parses on path rename or move
                             DebouncedEvent::Rename(from, to) => {
-                                println!("Renaming");
                                 Self::organize(&to, &data.lock().unwrap());
                             }
 
@@ -224,15 +223,12 @@ impl SmartOrganizer {
 
     /// Adds a listener to SmartOrganizer if listener does not already exists
     pub fn add_listener(&mut self, listener: ListenerData) {
-        dbg!("Adding a listener: {:?}", &listener);
         let exists = self
             .data
             .lock()
             .unwrap()
             .iter()
-            .any(|l| l.id != listener.id);
-
-        println!("Any: {exists}");
+            .any(|l| l.id == listener.id);
 
         if !exists {
             let mode = if listener.deep {
@@ -242,19 +238,15 @@ impl SmartOrganizer {
             };
 
             for path in &listener.paths {
-                // Prevents having duplicate paths in the watcher.
-                println!("Path: {path:?}");
-                println!("Enabled: {}", listener.enabled);
+                // Prevents having duplicate paths in the watcher
+                // Essentially only one path is subscribed to
                 let inserted = self.watched_paths.insert(path.clone(), listener.enabled);
-                println!("Inserted: {inserted:#?}");
+
                 if let None = inserted {
-                    println!("Adding {path:?} to the watcher");
                     self.watch_path(path, mode);
                 }
             }
-            println!("Watched_paths: {:?}", self.watched_paths);
 
-            dbg!("Inner state of add_listener");
             self.data.lock().unwrap().push(listener);
         }
     }
@@ -274,7 +266,7 @@ impl SmartOrganizer {
                 self.unwatch_path(rmpath);
             }
 
-            self.data.lock().unwrap().retain(|d| d.id == listener.id)
+            self.data.lock().unwrap().retain(|d| d.id != listener.id)
         }
     }
 
@@ -395,18 +387,9 @@ impl SmartOrganizer {
 
             PathName => {
                 if let Ok(abs_path) = path.canonicalize() {
-                    // Allow file paths
-                    // if let Some(as_str) = abs_path.to_string_lossy() {
-                    //     println!("AsStr ====>       {as_str}");
-                    //     let normalized = as_str.to_lowercase().replace("\\", "/");
-                    //     println!("{normalized}------{to_match}");
-                    //     return normalized == to_match.replace("\\", "/");
-                    // }
                     let as_str = abs_path.to_string_lossy();
-                    println!("AsStr  ====>  {as_str}");
                     let normalized = as_str.to_lowercase().replace("\\", "/");
-                    println!("Normalized ====>  {normalized}");
-                    println!("to_match ====>  {}", to_match.replace("\\", "/"));
+
                     return normalized.contains(&to_match.replace("\\", "/"));
                 }
             }
