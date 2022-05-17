@@ -6,10 +6,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{mpsc::Receiver, Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use chrono::Local;
 use glob::glob;
 use notify::{DebouncedEvent, Result, Watcher};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BoolFunc {
@@ -119,8 +121,13 @@ impl SmartOrganizer {
             if is_match {
                 unsafe {
                     // Unsafe because of `LOGGER`
-                    FileOperations::new(path.as_ref().to_path_buf(), &data.actions, &LOGGER)
-                        .perform_ops();
+                    FileOperations::new(
+                        &data.id,
+                        path.as_ref().to_path_buf(),
+                        &data.actions,
+                        &LOGGER,
+                    )
+                    .perform_ops();
                 }
             }
         }
@@ -475,35 +482,34 @@ impl Logger {
     }
 
     // Sends event `logger` to frontend
-    pub fn log(&self, msg: &str) {
-        #[derive(Serialize, Clone)]
-        struct Payload<T> {
-            id: u32,
-            content: T,
-        }
-
+    pub fn log(&self, log: Log) {
         if let Some(window) = &self.window {
-            window
-                .emit(
-                    "logger",
-                    &Payload {
-                        id: 0,
-                        content: msg.to_owned(),
-                    },
-                )
-                .expect("Failed to emit log");
+            window.emit("logger", log).expect("Failed to emit log");
         }
     }
 }
 struct FileOperations<'a> {
+    id: &'a String,
     path: PathBuf,
     actions: &'a Vec<Action>,
     logger: &'a Logger,
 }
 
+#[derive(Serialize)]
+
+struct User<'a> {
+    pub name: &'a String,
+}
+
 impl<'a> FileOperations<'a> {
-    pub fn new(path: PathBuf, actions: &'a Vec<Action>, logger: &'a Logger) -> Self {
+    pub fn new(
+        id: &'a String,
+        path: PathBuf,
+        actions: &'a Vec<Action>,
+        logger: &'a Logger,
+    ) -> Self {
         FileOperations {
+            id,
             path,
             actions,
             logger,
@@ -513,9 +519,19 @@ impl<'a> FileOperations<'a> {
     pub fn perform_ops(&self) {
         use ActionType::*;
         for Action(action, to) in self.actions.iter() {
+            // let log = Log {
+
+            // }
             match action {
                 MOVE => {
-                    self.logger.log("Moving file");
+                    self.logger.log(Log {
+                        parent_id: &self.id,
+                        action: &action,
+                        path: &self.path,
+                        destination: &to,
+                        id: Uuid::new_v4().to_string(),
+                        timestamp: Local::now().to_rfc2822(),
+                    });
                     let to = to.join(self.path.file_name().unwrap());
 
                     if self.path.exists() && !to.exists() {
@@ -526,7 +542,7 @@ impl<'a> FileOperations<'a> {
                     }
                 }
                 COPY => {
-                    self.logger.log("Copying File");
+                    // self.logger.log("Copying File");
                     if self.path.exists() && to.exists() {
                         match std::fs::copy(&self.path, to) {
                             Ok(_) => println!("Copying is a success"),
@@ -605,14 +621,14 @@ pub struct Rule {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Action(ActionType, PathBuf);
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Log {
-    parent_id: String,
-    id: String,
-    action: ActionType,
-    timestamp: String,
-    path: String,
-    destination: PathBuf,
+#[derive(Debug, Serialize, Clone)]
+pub struct Log<'a> {
+    pub parent_id: &'a String,
+    pub id: String,
+    pub action: &'a ActionType,
+    pub timestamp: String,
+    pub path: &'a PathBuf,
+    pub destination: &'a PathBuf,
 }
 
 #[cfg(test)]
