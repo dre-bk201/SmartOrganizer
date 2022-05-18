@@ -74,48 +74,51 @@ impl SmartOrganizer {
         }
     }
 
-    // / Checks if any of the paths
-    fn filter_deep<P: AsRef<Path>>(data: &ListenerData, p: P) -> bool {
-        data.paths.iter().fold(false, |a, b| {
-            let watched_path = b.components().collect::<Vec<_>>();
-            let path = p
-                .as_ref()
-                .components()
-                .take(watched_path.len())
-                .collect::<Vec<_>>();
+    /// Checks if any a listener should receive the path based on its `deep` field
+    fn recv_event<P: AsRef<Path>>(data: &ListenerData, path: P) -> bool {
+        // Checks "Should this listener receive the event?"
+        if data.deep {
+            return true;
+        }
 
-            if watched_path == path {
-                let diff = watched_path.len().abs_diff(path.len());
+        let mut returnv = false;
 
-                return a | (diff > 1);
+        data.paths.iter().for_each(|watched_path| {
+            // checks if the event_path is a subdir of the watched_path
+            let found = path.as_ref().starts_with(watched_path);
+
+            let w = watched_path.components().collect::<Vec<_>>();
+            let p = path.as_ref().components().collect::<Vec<_>>();
+
+            if found {
+                let diff = w.len().abs_diff(p.len());
+
+                // Watches events in immediate directories
+                if diff == 2 {
+                    returnv = true;
+                }
+
+                // Watches immediate changes in the watched_path
+                if diff > 0 && diff <= 1 {
+                    returnv = true;
+                }
             }
+        });
 
-            // let diff =                 .abs_diff(p.as_ref().components().collect::<Vec<_>>().len());
-
-            // a | (diff > 1)
-            false
-        })
+        returnv
     }
 
     /// Organizes the path supplied if it matches rules
     fn organize_path<P: AsRef<Path>>(path: P, data: &ListenerData) {
-        // Checks if
-        let has_deep = if !data.deep {
-            Self::filter_deep(&data, path.as_ref())
-        } else {
-            true
-        };
-
-        println!("{:?}", path.as_ref());
-        println!("{data:?}");
-
-        // Organizes if the listener is enabled or if path exists
         if !path.as_ref().exists() {
-            println!("Path does not exist");
-            return ();
+            println!("{:?} does not exist", path.as_ref().display());
+            return;
         }
 
-        if data.enabled {
+        // Checks if listener should process this event if it is deep
+        let recv_event = Self::recv_event(&data, path.as_ref());
+
+        if data.enabled && recv_event {
             let is_match = Self::apply_rule(path.as_ref(), &data.selection, &data.rules);
 
             if is_match {
@@ -238,11 +241,8 @@ impl SmartOrganizer {
             .any(|l| l.id == listener.id);
 
         if !exists {
-            let mode = if listener.deep {
-                notify::RecursiveMode::Recursive
-            } else {
-                notify::RecursiveMode::NonRecursive
-            };
+            // Watches deep by default
+            let mode = notify::RecursiveMode::Recursive;
 
             for path in &listener.paths {
                 // Prevents having duplicate paths in the watcher
@@ -256,6 +256,8 @@ impl SmartOrganizer {
 
             self.data.lock().unwrap().push(listener);
         }
+
+        dbg!("Listener not added");
     }
 
     pub fn remove_listener(&mut self, listener: &ListenerData) {
@@ -710,6 +712,55 @@ mod tests {
             test_case == result_case
         );
         assert_eq!(test_case, result_case);
+    }
+
+    #[test]
+    fn test_recv_event() {
+        let mut data = ListenerData {
+            id: String::from("test"),
+            actions: vec![Action(ActionType::MOVE, PathBuf::from("/home/test"))],
+            deep: false,
+            rules: vec![Rule {
+                search_type: SearchType::FileName,
+                condition: Condition::Includes,
+                text: String::from("Fifa 18"),
+            }],
+            selection: BoolFunc::Any,
+            enabled: true,
+            paths: vec![PathBuf::from("C:/Users/user/Desktop")],
+        };
+
+        // Tests for events
+        let path = PathBuf::from("C:/Users/user/Desktop/fifa/11/filename.txt");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, false);
+
+        let path = PathBuf::from("C:/Users/user/Desktop/filename.txt");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, true);
+
+        let path = PathBuf::from("C:/Users/user/Desktop/fifa/Fifa 18.tar.gz");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, true);
+
+        let path = PathBuf::from("C:/Users/user/Desktop");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, false);
+
+        data.deep = true;
+        let path = PathBuf::from("C:/Users/user/Desktop/fifa/11/filename.txt");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, true);
+
+        let path = PathBuf::from("C:/Users/user/Desktop/fifa/11/9900/filename.txt");
+        let result = SmartOrganizer::recv_event(&data, &path);
+
+        assert_eq!(result, true);
     }
 
     #[test]
