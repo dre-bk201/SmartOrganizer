@@ -17,6 +17,7 @@ pub fn start_receiver(state: State<OrganizerState>) {
         if !IS_RECVING {
             dbg!("Starting receiver again");
             state.organizer.lock().unwrap().listen();
+            IS_RECVING = true;
         }
     }
 }
