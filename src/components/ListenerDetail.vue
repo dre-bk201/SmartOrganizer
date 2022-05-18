@@ -12,6 +12,7 @@ import { useRoute, useRouter } from "vue-router";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { dialog } from "@tauri-apps/api";
 import { Listener } from "../interfaces/store/listener";
+import { normalize } from "@tauri-apps/api/path";
 
 const store = useStore();
 const route = useRoute();
@@ -52,8 +53,12 @@ const deleteListener = () => {
 const floatingButtonAction = async () => {
   switch (route.name) {
     case "Monitor":
-      let path = await dialog.open({ directory: true });
-      if (path) store.dispatch("modal/addMonitorPath", path);
+      let path = await dialog.open({ directory: true, multiple: false });
+
+      if (path) {
+        let normalized_path = await normalize(path as string);
+        store.dispatch("modal/addMonitorPath", normalized_path);
+      }
       break;
     case "Rules":
       let idx = store.state.modal.listener.rules.length;

@@ -7,6 +7,7 @@ import { dialog } from "@tauri-apps/api";
 import { useStore } from "vuex";
 
 import { COPY, MOVE, DELETE, UNLINK, RENAME } from "../utils";
+import { normalize } from "@tauri-apps/api/path";
 
 const props = defineProps<{ action: [string, string]; idx: number }>();
 const store = useStore();
@@ -28,7 +29,7 @@ const selectAction = async (e: Event, idx: number) => {
     toggleInputValue(<HTMLInputElement>input);
 
     let action = (<HTMLInputElement>input).value;
-    let path: string | string[] | null = "";
+    let path: string | string[] | null = null;
 
     if (props.idx == idx) {
       const storeCommit = async (
@@ -38,11 +39,18 @@ const selectAction = async (e: Event, idx: number) => {
       ) => {
         if (!warn) store.commit("modal/setListenerAction", [action, idx, ""]);
         else {
-          if (!isFile) path = await dialog.open({ directory: true });
+          if (!isFile)
+            path = await dialog.open({ directory: true, multiple: false });
           else path = await dialog.save({});
 
-          if (path)
-            store.commit("modal/setListenerAction", [action, idx, path]);
+          if (path) {
+            let normalized_path = await normalize(path as string);
+            store.commit("modal/setListenerAction", [
+              action,
+              idx,
+              normalized_path,
+            ]);
+          }
         }
       };
 
