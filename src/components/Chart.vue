@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import Vue3ChartJs from "@j-t-mcc/vue3-chartjs";
-import { Listener } from "../store/modules/listener";
+import { Listener } from "../interfaces/store/listener";
 import { generateChart } from "../chart-utils";
 import { ref } from "vue";
 

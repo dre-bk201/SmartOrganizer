@@ -3,7 +3,7 @@ import Icon from "./Icon.vue";
 
 import { computed, ComputedRef, inject, toRefs } from "vue";
 import { useStore } from "vuex";
-import { Log } from "../store/modules/listener";
+import { Log } from "../interfaces/store/listener";
 import { useDimensions } from "../utils";
 import { useRoute } from "vue-router";
 

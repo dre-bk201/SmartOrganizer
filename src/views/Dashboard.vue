@@ -14,7 +14,7 @@ import { computed } from "vue";
 import { useStore } from "vuex";
 import anime from "animejs";
 
-import type { Listener } from "../store/modules/listener";
+import type { Listener } from "../interfaces/store/listener";
 
 const store = useStore();
 

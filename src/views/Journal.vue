@@ -3,7 +3,7 @@ import Log from "../components/Log.vue";
 
 import { computed, ComputedRef, onUnmounted, Ref, ref, watch } from "vue";
 import { useStore } from "vuex";
-import { Listener } from "../store/modules/listener";
+import { Listener } from "../interfaces/store/listener";
 import { useDimensions, useFetchList } from "../utils";
 import { useScroll } from "@vueuse/core";
 

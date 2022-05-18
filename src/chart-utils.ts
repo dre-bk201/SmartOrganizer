@@ -1,4 +1,4 @@
-import { Listener } from "./store/modules/listener";
+import { Listener } from "./interfaces/store/listener";
 import dataLabels from "chartjs-plugin-datalabels";
 
 const MONTHS = [

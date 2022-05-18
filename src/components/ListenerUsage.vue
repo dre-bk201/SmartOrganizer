@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from "vue";
-import { Listener } from "../store/modules/listener";
+import { Listener } from "../interfaces/store/listener";
 import { useStore } from "vuex";
 import anime from "animejs";
 
