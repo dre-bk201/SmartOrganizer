@@ -37,7 +37,13 @@ export type SearchType =
   | "FileExtension"
   | "FolderName";
 
-type Condition = "Includes" | "NotIncludes" | "ExactMatch" | "IsNot";
+type Condition =
+  | "Includes"
+  | "NotIncludes"
+  | "ExactMatch"
+  | "IsNot"
+  | "Greater"
+  | "Less";
 
 export interface ListenerData {
   id: string;

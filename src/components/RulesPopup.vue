@@ -10,6 +10,10 @@ import {
   FILESIZE,
   FOLDERNAME,
   PATHNAME,
+  INCLUDES,
+  ISNOT,
+  EXACTMATCH,
+  NOTINCLUDES,
 } from "../utils/index";
 
 interface Props {
@@ -161,49 +165,49 @@ onMounted(() => {
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Includes"
+                    :id="INCLUDES"
                     type="radio"
-                    value="Includes"
+                    :value="INCLUDES"
                     v-model="state.condition"
                     name="condition"
                   />
-                  <label class="text-lg" for="Includes">Includes</label>
+                  <label class="text-lg" :for="INCLUDES">Includes</label>
                 </div>
 
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Not Includes"
+                    :id="NOTINCLUDES"
                     type="radio"
-                    value="Not Includes"
+                    :value="NOTINCLUDES"
                     v-model="state.condition"
                     name="condition"
                   />
-                  <label class="text-lg" for="Not Includes">Not Includes</label>
+                  <label class="text-lg" :for="NOTINCLUDES">Not Includes</label>
                 </div>
 
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Exact Match"
+                    :id="EXACTMATCH"
                     type="radio"
                     name="condition"
-                    value="Exact Match"
+                    :value="EXACTMATCH"
                     v-model="state.condition"
                   />
-                  <label class="text-lg" for="Exact Match">Exact Match</label>
+                  <label class="text-lg" :for="EXACTMATCH">Exact Match</label>
                 </div>
 
                 <div class="m-1">
                   <input
                     class="mr-2"
-                    id="Is Not"
+                    :id="ISNOT"
                     type="radio"
                     name="condition"
-                    value="Is Not"
+                    :value="ISNOT"
                     v-model="state.condition"
                   />
-                  <label class="text-lg" for="Is Not">Is Not</label>
+                  <label class="text-lg" :for="ISNOT">Is Not</label>
                 </div>
               </div>
             </template>

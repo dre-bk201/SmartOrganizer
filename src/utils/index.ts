@@ -14,6 +14,11 @@ export const FILEEXTENSION = "FileExtension";
 export const FOLDERNAME = "FolderName";
 export const PATHNAME = "PathName";
 
+export const INCLUDES = "Includes";
+export const NOTINCLUDES = "NotIncludes";
+export const ISNOT = "IsNot";
+export const EXACTMATCH = "ExactMatch";
+
 export const useFetchList = (
   arr: Array<any>,
   low: number = 0,
@@ -50,7 +55,7 @@ const dimensions = reactive({
   height: height,
   id: 0,
   isMaximized: false,
-  unlisten: (): void => { },
+  unlisten: (): void => {},
 });
 
 export const useDimensions = () => {
@@ -67,9 +72,9 @@ export const useDimensions = () => {
       })
       .then(
         (unlisten) =>
-        (dimensions.unlisten = () => {
-          unlisten();
-        })
+          (dimensions.unlisten = () => {
+            unlisten();
+          })
       );
     resizeCallers.count = 1;
   }
