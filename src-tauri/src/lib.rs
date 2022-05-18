@@ -152,7 +152,8 @@ impl SmartOrganizer {
         std::thread::Builder::new()
             .name("signal_recv".to_owned())
             .spawn(move || loop {
-                match recv.lock().unwrap().recv() {
+                let event = recv.lock().unwrap().recv();
+                match event {
                     Ok(event) => {
                         match event {
                             // Parses on path created
@@ -226,7 +227,6 @@ impl SmartOrganizer {
 
     /// Updates listener
     pub fn update_listener(&mut self, listener_data: ListenerData) {
-        println!("Updating Listener: {listener_data:?}");
         self.remove_listener(&listener_data);
         self.add_listener(listener_data.clone())
     }
@@ -256,8 +256,6 @@ impl SmartOrganizer {
 
             self.data.lock().unwrap().push(listener);
         }
-
-        dbg!("Listener not added");
     }
 
     pub fn remove_listener(&mut self, listener: &ListenerData) {
@@ -305,8 +303,8 @@ impl SmartOrganizer {
             .map(|rule| match rule.condition {
                 Includes => Self::includes(&path, &rule.search_type, &rule.text),
                 NotIncludes => !Self::includes(&path, &rule.search_type, &rule.text),
-                IsNot => Self::exact_match(&path, &rule.search_type, &rule.text),
                 ExactMatch => Self::exact_match(&path, &rule.search_type, &rule.text),
+                IsNot => !Self::exact_match(&path, &rule.search_type, &rule.text),
                 Greater => Self::greater(&path, &rule.search_type, &rule.text),
                 Less => !Self::greater(&path, &rule.search_type, &rule.text),
             })
@@ -417,7 +415,6 @@ impl SmartOrganizer {
                     let filename = path.file_stem().unwrap().to_str().unwrap();
                     return filename == text;
                 }
-                false
             }
 
             FileContent => {
@@ -434,7 +431,6 @@ impl SmartOrganizer {
                         }
                     }
                 }
-                false
             }
 
             FolderName => {
@@ -442,7 +438,6 @@ impl SmartOrganizer {
                     let foldername = path.file_name().unwrap().to_str().unwrap();
                     return foldername == text;
                 }
-                false
             }
 
             // Directories can have extensions in filename
@@ -452,10 +447,9 @@ impl SmartOrganizer {
                         return as_str == text;
                     }
                 }
-                false
             }
 
-            FileSize => false,
+            FileSize => (),
 
             PathName => {
                 if let Ok(abs_path) = path.canonicalize() {
@@ -464,9 +458,9 @@ impl SmartOrganizer {
                         return normalized == text.replace("\\", "/");
                     }
                 }
-                false
             }
         }
+        false
     }
 }
 
@@ -521,33 +515,44 @@ impl<'a> FileOperations<'a> {
     pub fn perform_ops(&self) {
         use ActionType::*;
         for Action(action, to) in self.actions.iter() {
-            // let log = Log {
-
-            // }
             match action {
                 MOVE => {
-                    self.logger.log(Log {
-                        parent_id: &self.id,
-                        action: &action,
-                        path: &self.path,
-                        destination: &to,
-                        id: Uuid::new_v4().to_string(),
-                        timestamp: Local::now().to_rfc2822(),
-                    });
                     let to = to.join(self.path.file_name().unwrap());
 
                     if self.path.exists() && !to.exists() {
-                        match std::fs::rename(&self.path, to) {
-                            Ok(_) => println!("File successfully moved"),
+                        match std::fs::rename(&self.path, &to) {
+                            Ok(_) => {
+                                self.logger.log(Log {
+                                    parent_id: &self.id,
+                                    action: &action,
+                                    path: &self.path,
+                                    destination: &to,
+                                    id: Uuid::new_v4().to_string(),
+                                    timestamp: Local::now().to_rfc2822(),
+                                });
+
+                                println!("File successfully moved")
+                            }
+
                             Err(e) => println!("Failed to move file: {}", e),
                         }
                     }
                 }
                 COPY => {
-                    // self.logger.log("Copying File");
                     if self.path.exists() && to.exists() {
                         match std::fs::copy(&self.path, to) {
-                            Ok(_) => println!("Copying is a success"),
+                            Ok(_) => {
+                                self.logger.log(Log {
+                                    parent_id: &self.id,
+                                    action: &action,
+                                    path: &self.path,
+                                    destination: &to,
+                                    id: Uuid::new_v4().to_string(),
+                                    timestamp: Local::now().to_rfc2822(),
+                                });
+
+                                println!("Copying is a success")
+                            }
                             Err(e) => println!("Copying is a failure: {}", e),
                         }
                     }
@@ -556,7 +561,17 @@ impl<'a> FileOperations<'a> {
                 DELETE => {
                     if self.path.exists() {
                         match trash::delete(&self.path) {
-                            Ok(_) => println!("File successfully deleted"),
+                            Ok(_) => {
+                                self.logger.log(Log {
+                                    parent_id: &self.id,
+                                    action: &action,
+                                    path: &self.path,
+                                    destination: &PathBuf::from(""),
+                                    id: Uuid::new_v4().to_string(),
+                                    timestamp: Local::now().to_rfc2822(),
+                                });
+                                println!("File successfully deleted")
+                            }
                             Err(e) => println!("Failed to delete file: {}", e),
                         }
                     }
@@ -564,8 +579,18 @@ impl<'a> FileOperations<'a> {
 
                 RENAME => {
                     if self.path.exists() && to.exists() {
-                        match std::fs::rename(&self.path, to) {
-                            Ok(_) => println!("File successfully renamed"),
+                        match std::fs::rename(&self.path, &to) {
+                            Ok(_) => {
+                                self.logger.log(Log {
+                                    parent_id: &self.id,
+                                    action: &action,
+                                    path: &self.path,
+                                    destination: &to,
+                                    id: Uuid::new_v4().to_string(),
+                                    timestamp: Local::now().to_rfc2822(),
+                                });
+                                println!("File successfully renamed")
+                            }
                             Err(e) => println!("Failed to rename file: {}", e),
                         }
                     }
@@ -574,7 +599,18 @@ impl<'a> FileOperations<'a> {
                 UNLINK => {
                     if self.path.exists() {
                         match std::fs::remove_file(&self.path) {
-                            Ok(_) => println!("File successfully unlinked"),
+                            Ok(_) => {
+                                self.logger.log(Log {
+                                    parent_id: &self.id,
+                                    action: &action,
+                                    path: &self.path,
+                                    destination: &PathBuf::from(""),
+                                    id: Uuid::new_v4().to_string(),
+                                    timestamp: Local::now().to_rfc2822(),
+                                });
+
+                                println!("File successfully unlinked")
+                            }
                             Err(e) => println!("Failed to unlink file: {}", e),
                         }
                     }
