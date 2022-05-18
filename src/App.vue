@@ -161,9 +161,7 @@ onBeforeMount(async () => {
     <div class="w-full flex flex-col">
       <Titlebar />
       <router-view v-slot="{ Component }">
-        <keep-alive include="Dashboard">
-          <component :is="Component" />
-        </keep-alive>
+        <component :is="Component" />
       </router-view>
     </div>
   </div>
