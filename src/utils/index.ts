@@ -1,79 +1,64 @@
-import { computed, reactive, ref } from "vue";
-import { appWindow } from "@tauri-apps/api/window";
+import { defaultListener } from "../static";
+import isEqual from "lodash.isequal";
+import omit from "lodash.omit";
 
-export const FILENAME = "File Name";
-export const FILEEXTENSION = "File Extension";
-export const FOLDERNAME = "Folder Name";
-export const FILECONTENT = "File Content";
-export const FILESIZE = "File Size";
-export const PATHNAME = "Path Name";
+export const sclone = structuredClone;
 
-export const MOVE = "MOVE";
-export const COPY = "COPY";
-export const RENAME = "RENAME";
-export const UNLINK = "UNLINK";
-export const DELETE = "DELETE";
-
-export const useFetchList = (
-  arr: Array<any>,
-  low: number = 0,
-  high: number = 10
-) => {
-  let flatten = arr.reduce((acc, val) => {
-    return acc.concat(...val.logs);
-  }, []);
-
-  return { slice: flatten.slice(low, high), len: flatten.length };
-};
-
-interface ResizeEvent {
-  event: string;
-  id: number;
-  payload: {
-    width: number;
-    height: number;
-  };
-  windowLabel: string;
+export function lower(a: string) {
+  return a.toLowerCase();
 }
 
-const resizeCallers = {
-  count: 0,
-};
+export function isDefault(listener: IListener) {
+  return isEqual(omit(listener, "id", "created"), omit(defaultListener(), "id", "created"));
+}
 
-let { width, height } = await appWindow.innerSize();
+export function unitMap(val: string, kind: "" | "metric" = ""): string {
+  let returnv: string = "";
 
-console.log("Recalling this package");
-const dimensions = reactive({
-  appWindow,
-  width: width,
-  event: "tauri://resize",
-  windowLabel: "",
-  height: height,
-  id: 0,
-  isMaximized: false,
-  unlisten: (): void => {},
-});
+  if (kind == "metric")
+    switch (val as TUnitOpts) {
+      case "B":
+        return "Byte(s)";
+      case "KB":
+        return "Kilobyte(s)";
+      case "MB":
+        return "Megabyte(s)";
+      case "GB":
+        return "Gigabyte(s)";
+      case "TB":
+        return "Terabyte(s)";
+    }
+  else
+    switch (val) {
+      case "Byte(s)":
+        returnv = "B";
+        break;
+      case "Kilobyte(s)":
+        returnv = "KB";
+        break;
+      case "Megabyte(s)":
+        returnv = "MB";
+        break;
+      case "Gigabyte(s)":
+        returnv = "GB";
+        break;
+      case "Terabyte(s)":
+        returnv = "TB";
+    }
 
-export const useDimensions = () => {
-  if (resizeCallers.count <= 0) {
-    // limits the amount of resize event listener to 1
-    appWindow
-      .listen("tauri://resize", async (e: ResizeEvent) => {
-        dimensions.isMaximized = await appWindow.isMaximized();
-        dimensions.width = e.payload.width;
-        dimensions.height = e.payload.height;
-        dimensions.windowLabel = e.windowLabel;
-        dimensions.event = e.event;
-        dimensions.id = e.id;
-      })
-      .then(
-        (unlisten) =>
-          (dimensions.unlisten = () => {
-            unlisten();
-          })
-      );
-    resizeCallers.count = 1;
+  return returnv;
+}
+
+export function stringToColour(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let colour = "#";
+  for (let i = 0; i < 3; i++) {
+    let value = (hash >> (i * 8)) & 0xff;
+    colour += ("00" + value.toString(16)).substr(-2);
   }
 
-  return dimensions;
-};
+  return colour;
+}
