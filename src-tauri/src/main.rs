@@ -1,51 +1,46 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
-#![allow(unused)]
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![feature(lazy_cell)]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod commands;
+use std::sync::Arc;
 
-use tauri::Manager;
-use tauri_plugin_store::PluginBuilder;
+use commands::{
+    add_listener, load_from_database, load_settings, remove_listener, save_log, save_settings,
+    start_listener, update_listener, get_dir_count
+};
+use organizer::{logger::LOGGER, SmartOrganizer};
+use tauri::{generate_handler, Manager};
 use window_shadows::set_shadow;
 
-mod commands;
-use commands::{add_listener, dir_len, remove_listener, start_receiver, update_listener};
-
-use std::sync::{Arc, Mutex};
-
-static mut IS_RECVING: bool = false;
-
-pub struct OrganizerState {
-    pub organizer: Arc<Mutex<smartorganizer::SmartOrganizer>>,
+pub struct State {
+    pub inner: Arc<tokio::sync::Mutex<SmartOrganizer>>,
 }
 
-fn main() {
-    let mut organizer = OrganizerState {
-        organizer: Arc::new(Mutex::new(smartorganizer::SmartOrganizer::new())),
-    };
-
-    let organizer_arc = organizer.organizer.clone();
-
+#[tokio::main]
+async fn main() {
     tauri::Builder::default()
-        .setup(move |app| {
+        .setup(|app| {
             let window = app.get_window("main").unwrap();
-
-            #[cfg(any(target_os = "windows", target_os = "macos"))]
-            set_shadow(&window, true).unwrap();
-
-            organizer_arc.lock().unwrap().set_window(window);
-
+            match set_shadow(&window, true) {
+                Ok(v) => println!("{v:?}"),
+                Err(e) => println!("{e:?}"),
+            }
+            LOGGER.lock().unwrap().init_window(window);
             Ok(())
         })
-        .plugin(PluginBuilder::default().build())
-        .manage(organizer)
-        .invoke_handler(tauri::generate_handler![
+        .manage(State {
+            inner: Arc::new(tokio::sync::Mutex::new(SmartOrganizer::new().await)),
+        })
+        .invoke_handler(generate_handler![
+            load_from_database,
             add_listener,
-            start_receiver,
-            dir_len,
-            update_listener,
             remove_listener,
-            // undo_action
+            update_listener,
+            start_listener,
+            load_settings,
+            save_settings,
+            save_log,
+            get_dir_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

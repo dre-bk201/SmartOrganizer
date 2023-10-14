@@ -1,66 +1,149 @@
-use std::path::PathBuf;
+use std::{cell::RefCell, path::Path, rc::Rc};
 
-use smartorganizer::ListenerData;
-use tauri::State;
+use appconfig::AppConfigManager;
+use organizer::{ListenerData, ListenerQuery, Log, LogQuery, DIRS};
+use tauri::command;
 
-use crate::{OrganizerState, IS_RECVING};
+use crate::State;
 
-#[tauri::command]
-pub fn add_listener(listener: ListenerData, state: State<OrganizerState>) {
-    let mut organizer = state.organizer.lock().unwrap();
-    organizer.add_listener(listener);
+#[command]
+pub async fn start_listener(state: tauri::State<'_, State>) -> Result<(), ()> {
+    let mut o = state.inner().inner.lock().await;
+    o.start();
+    Ok(())
 }
 
-#[tauri::command]
-pub fn start_receiver(state: State<OrganizerState>) {
-    unsafe {
-        if !IS_RECVING {
-            dbg!("Starting receiver again");
-            state.organizer.lock().unwrap().listen();
-            IS_RECVING = true;
+#[command]
+pub async fn add_listener(
+    listener: ListenerData,
+    state: tauri::State<'_, State>,
+) -> Result<String, ()> {
+    let mut o = state.inner().inner.lock().await;
+    Ok(o.add_listener(&listener).await.unwrap())
+}
+
+#[derive(serde::Serialize)]
+pub struct LoadedState {
+    listeners: Vec<ListenerData>,
+    logs: Vec<Log>,
+}
+
+#[command]
+pub async fn load_from_database(state: tauri::State<'_, State>) -> Result<LoadedState, ()> {
+    let mut o = state.inner().inner.lock().await;
+    let listeners = ListenerQuery::fetch_all(o.database())
+        .await
+        .unwrap()
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let logs = LogQuery::fetch_all(o.database()).await.unwrap().unwrap();
+
+    for d in listeners.iter() {
+        o.add_listener(d).await.unwrap();
+    }
+
+    Ok(LoadedState { listeners, logs })
+}
+
+#[command]
+pub async fn remove_listener(
+    listener: ListenerData,
+    state: tauri::State<'_, State>,
+) -> Result<Option<ListenerData>, ()> {
+    let mut o = state.inner().inner.lock().await;
+    Ok(o.remove_listener(&listener).await)
+}
+
+#[command]
+pub async fn save_log(log: Log, state: tauri::State<'_, State>) -> Result<bool, ()> {
+    let mut o = state.inner().inner.lock().await;
+    Ok(LogQuery::insert_one(o.database(), &log).await)
+}
+
+#[command]
+pub async fn update_listener(
+    listener: ListenerData,
+    state: tauri::State<'_, State>,
+) -> Result<String, ()> {
+    let mut o = state.inner().inner.lock().await;
+    Ok(o.update_listener(&listener).await)
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct AppConfig {
+    theme: String,
+    #[serde(rename = "titlebarStyle")]
+    titlebarstyle: String,
+    rounded: u32,
+    pin: bool,
+}
+
+#[command]
+pub fn load_settings() -> Option<AppConfig> {
+    let path = DIRS.data_local_dir();
+    println!("{path:?}");
+
+    let manager = AppConfigManager::new(
+        Rc::new(RefCell::from(AppConfig {
+            pin: true,
+            rounded: 15,
+            theme: String::from("dark"),
+            titlebarstyle: String::from("macos"),
+        })),
+        "smartorganizer",
+        "smartorganizer",
+    );
+
+    match manager.load() {
+        Ok(_) => Some(manager.data().borrow().clone()),
+        Err(_) => None,
+    }
+}
+
+#[command]
+pub fn save_settings(settings: AppConfig) -> Option<i32> {
+    let manager = AppConfigManager::new(
+        Rc::new(RefCell::from(settings)),
+        "smartorganizer",
+        "smartorganizer",
+    );
+
+    match manager.save() {
+        Ok(_) => Some(1),
+        Err(_) => None,
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct DirCount {
+    files: i32,
+    folders: i32,
+}
+
+#[command]
+pub fn get_dir_count(path: &Path) -> DirCount {
+    let mut dir_count = DirCount {
+        files: 0,
+        folders: 0,
+    };
+
+    match std::fs::read_dir(path) {
+        Ok(dirs) => {
+            for dir in dirs.flatten() {
+                if dir.path().is_file() {
+                    dir_count.files += 1;
+                } else if dir.path().is_dir() {
+                    dir_count.folders += 1;
+                }
+            }
         }
-    }
+        Err(_) => {
+            dir_count.files = -1;
+            dir_count.folders = -1;
+        }
+    };
+
+    dir_count
 }
-
-#[tauri::command]
-pub fn update_listener(listener: ListenerData, state: State<OrganizerState>) {
-    let mut organizer = state.organizer.lock().unwrap();
-
-    organizer.update_listener(listener);
-}
-
-#[tauri::command]
-pub fn remove_listener(listener: ListenerData, state: State<OrganizerState>) {
-    let mut s = state.organizer.lock().unwrap();
-    s.remove_listener(&listener);
-}
-
-#[tauri::command]
-pub fn dir_len(path: PathBuf) -> i32 {
-    if path.exists() {
-        let paths = std::fs::read_dir(path).unwrap();
-
-        return paths.collect::<Vec<_>>().len() as i32;
-    }
-    -1
-}
-
-// #[tauri::command]
-// pub fn undo_action(id: String, from: String, action: Action, handle: tauri::AppHandle) {
-//     let window = handle.get_window("main").unwrap();
-//     let Action(action, to) = action;
-//     let to = PathBuf::from(&to);
-
-//     match action.as_str() {
-//         "RENAME" | "MOVE" => {
-//             let actions = vec![Action::from("RENAME", &from)];
-//             FileOperations::from(&id, &to, &actions, &window, true, false).process(true);
-//         }
-
-//         "COPY" => {
-//             let actions = vec![Action::from("DELETE", &from)];
-//             FileOperations::from(&id, &to, &actions, &window, true, false).process(true);
-//         }
-//         _ => (),
-//     }
-// }

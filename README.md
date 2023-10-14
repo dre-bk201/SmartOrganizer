@@ -1,63 +1,40 @@
-# ![alt repo-icon](./src/assets/icons/broom.svg) Smart Organizer
+# SmartOrganizer
 
-Smart Organizer is an application that aims to improve your overall desktop/workspace tidiness, by allowing you to set a variety of **Rules**.
+SmartOrganizer is a powerful application designed to enhance your desktop/workspace tidiness by allowing you to define custom rules and actions for automated organization tasks. Whether you need to declutter your desktop, sort files into specific folders, or clean up unused directories, SmartOrganizer has you covered.
 
-## Demo:
+## Features
 
-![alt repo-icon](./demo/demo.gif)
+- **Book Sorting:** Organize your light novel books, coding books, or any other category with ease.
+- **Document Management:** Efficiently categorize and move school documents into appropriate folders.
+- **Directory Cleanup:** Automatically clean up unused environment directories or project folders, such as `python venv` directories, `node_modules/`, and `src/target/`.
 
-## Personal Usecases:
+## How It Works
 
-- Removing unwanted files.
-- Sorting Light Novel Books, Coding Books.
-- Moving school documents into appropriate folders.
-- Moving anime episodes into correct folder.
-- Cleaning unused environment directories or project folders like venv folders, node_modules and rust target folders etc.
+SmartOrganizer simplifies the task of maintaining a tidy workspace. You can define rules and actions using a simple configuration, and the application will take care of the rest. Here's a basic example of how it works:
 
-## How does it work?
+# Getting Started
 
-This app is uses quite a bit of jargons, namely:
+To get started with SmartOrganizer, follow these steps:
 
-- **Listener** - This is the term given to the component that sends the signal to the rust backend to organize on a defined interval.
-- **Rule** - A rule is a condition a file or path must follow in order to carry out an **Action**. Definition:
+    Installation: Clone this repository or download the latest release from the Releases page.
 
-```ts
-interface Rule {
-  searchType:
-    | "Folder Name"
-    | "File Name"
-    | "File Extension"
-    | "File Content"
-    | "FileSize"
-    | "Path Name";
-  condition: "Includes" | "Not Includes" | "Exact Match" | "Is Not";
-  text: string; // text being the value to match
-}
-```
+    Configuration: Customize the rules and actions in the config.yaml file to suit your organization needs.
 
-- **Action** - A tuple consisting of the action to perform as well as optionally a destination respectively. Definition:
+    Execution: Run SmartOrganizer, and watch as it automatically organizes your workspace according to your rules.
 
-```ts
-type ActionType = "MOVE" | "COPY" | "DELETE" | "UNLINK" | "RENAME";
+    Enjoy a Tidier Workspace: Sit back and enjoy your organized desktop/workspace without the hassle of manual organization.
 
-type Action = [ActionType, string];
-```
+## Contributing
 
-A **Rule** is provided and in accordance to that rule, if files/directories match in the specified path an **Action** is performed. The option of scanning a directory of depth 1 or recursively is also made possible.
+We welcome contributions from the open-source community. If you'd like to contribute to SmartOrganizer, please follow our Contribution Guidelines.
+License
 
-## Major changes from prerelease
+This project is licensed under the MIT License - see the LICENSE file for details.
+## Acknowledgments
 
-- More modern UI.
-- More readable codebase.
-- Tree browser moved from clicking listener to dedicated button in listener's modal.
-- Listener's modal opens on a single click instead of double.
+    Special thanks to [Author Name] for [specific contribution].
+    Inspiration drawn from [inspiration source].
 
-## Upcoming
+## Contact
 
-- Empty States
-- Refactor rust backend
-- MacOs like titlebar and more...
-
-## Additionals
-
-- If you wanna see the previous version for contrast check releases and download the prerelease. Idk why but the option I guess.
+If you have any questions or suggestions, feel free to contact us at [your-email@example.com].
