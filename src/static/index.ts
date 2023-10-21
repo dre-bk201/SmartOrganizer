@@ -66,16 +66,20 @@ export const sizeOpts: TDropdownOpts[] = [
     label: "Byte(s)",
   },
   {
-    value: "KB",
+    value: "Kb",
     label: "Kilobyte(s)",
   },
   {
-    value: "MB",
+    value: "Mb",
     label: "Megabyte(s)",
   },
   {
-    value: "GB",
+    value: "Gb",
     label: "Gigabyte(s)",
+  },
+  {
+    value: "Tb",
+    label: "Terabyte(s)",
   },
 ];
 
