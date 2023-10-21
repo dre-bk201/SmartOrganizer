@@ -46,8 +46,8 @@ function disabled(search: TSearch) {
 
     <Chips v-show="search != 'FileSize'" class="flex-grow w-0 overflow-x-auto" :model-value="text" />
 
-    <div class="flex gap-4 flex-grow items-center" v-show="search == 'FileSize'">
-      <input class="bg-[#424349] py-2 flex-grow outline-none rounded-md pr-2 text-lg text-right" type="number"
+    <div class="flex gap-4 items-center md:flex-grow" v-show="search == 'FileSize'">
+      <input class="bg-[#424349] py-2 w-16 flex-grow outline-none rounded-md pr-2 text-lg text-right" type="number"
         :value="size[0]" @input="(e) => update([+(e.target as HTMLInputElement).value, size[1]], idx, 'data.size')" />
 
       <Dropdown :model-value="size[1]" @update:model-value="(e) => update([size[0], e], idx, 'data.size')"
