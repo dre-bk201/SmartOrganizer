@@ -123,7 +123,7 @@ async function copyToClipboard() {
                 <OpenModalIcon @click="openModal(idx)" v-tooltip.top="{ value: 'Open modal', class: 'modal' }" />
               </DialogTrigger>
               <DialogContent class="p-0 border-transparent outline-none">
-                <div class="rounded-xl h-[650px] relative w-[500px] flex flex-col px-5 py-2 adaptive--darker overflow-hidden">
+                <div class="rounded-xl h-[620px] relative flex flex-col px-5 py-2 adaptive--darker overflow-hidden">
                   <!-- Header -->
                   <section class="flex justify-between text-white">
                     <h1 class="text-2xl">View Logs</h1>
