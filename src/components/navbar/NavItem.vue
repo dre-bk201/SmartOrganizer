@@ -14,6 +14,8 @@ const props = defineProps<{ to: string, name: string, isPinned: boolean }>();
 
 const isActive = computed(() => router.currentRoute.value.name == props.name);
 const tooltipText = computed(() => props.isPinned ? props.name : '');
+//@ts-ignore
+const sideOffset = computed<number>(() => "1")
 </script>
 
 <template>
@@ -30,7 +32,8 @@ const tooltipText = computed(() => props.isPinned ? props.name : '');
           </div>
         </router-link>
       </TooltipTrigger>
-      <TooltipContent :class="['bg-primary', tooltipText.length || 'p-0']" side="right" side-offset="1">{{ tooltipText }}</TooltipContent>
+
+      <TooltipContent :class="['bg-primary', tooltipText.length || 'p-0']" side="right" :side-offset="sideOffset">{{ tooltipText }}</TooltipContent>
     </Tooltip>
   </TooltipProvider>
 </template>
