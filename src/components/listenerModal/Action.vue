@@ -25,7 +25,10 @@ function isAllowed(idx: number, action: string) {
 }
 
 async function onActionChange(data: string, idx: number) {
-  if (data == "DELETE") proxy.value.actions[idx].action = data as TActionOpts;
+  if (data == "DELETE") {
+    proxy.value.actions[idx].action = data as TActionOpts;
+    return;
+  }
 
   let path = await dialog.open({ multiple: false, directory: true });
   proxy.value.actions[idx] = { action: data as TActionOpts, path: path as string }
