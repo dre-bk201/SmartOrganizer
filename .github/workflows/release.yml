@@ -31,8 +31,8 @@ jobs:
               tag_name: `SmartOrganizer-v${process.env.PACKAGE_VERSION}`,
               name: `SmartOrganizer-v${process.env.PACKAGE_VERSION}`,
               body: 'Take a look at the assets to download and install this app.',
-              draft: false,
-              prerelease: true
+              draft: true,
+              prerelease: false
             })
             return data.id
 
