@@ -1,166 +1,176 @@
 <script setup lang="ts">
-import Navbar from "./components/Navbar.vue";
-import Titlebar from "./components/Titlebar.vue";
-import Settings from "./components/Settings.vue";
+import AppLayout from "./components/layout/AppLayout.vue";
+import Titlebar from "./components/titlebar/Titlebar.vue";
+import Navbar from "./components/navbar/Navbar.vue";
+import ListenerModal from "./components/listenerModal/ListenerModal.vue";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { DialogClose } from "radix-vue";
 
-import { onBeforeMount, provide, ref, computed, Ref } from "vue";
-import { useStore } from "vuex";
-import { Store } from "tauri-plugin-store-api";
+import {
+  useSettingStore,
+  useListenerStore,
+  ListenerModalKey,
+  ListenerStoreKey,
+  SettingStoreKey,
+  ThemeKey,
+} from "./store";
+
+import { reactive, nextTick, computed, provide, onMounted, ref } from "vue";
+import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
-import { Log } from "./store/modules/listener";
-import { useToast, POSITION, TYPE } from "vue-toastification";
-import anime from "animejs";
+import { FocusOutsideEvent, PointerDownOutsideEvent } from "node_modules/radix-vue/dist/DismissableLayer";
 
-// TODO Add colors to tailwind.config.css and remove static colors from elements
-// TODO settings screen
-// TODO a chip is pressed opens directory if valid open [Journal Component] and if not valid error popup
-// TODO ellipses overflow if rule text overflows
-// TODO undo button [Journal Component]
-// TODO reactive status icon
-// TODO Saves theming
-// TODO ListenerModal Animation
-// TODO Add 2 more months on chart if possible and refactor [Statistics Component]
+import {
+  checkUpdate,
+  installUpdate,
+  onUpdaterEvent,
+} from '@tauri-apps/api/updater'
+import { relaunch } from '@tauri-apps/api/process'
 
-// Effects, Classes, Constants
-const store = useStore();
-const toast = useToast();
-const tauriStore = new Store(".data");
-const configStore = new Store(".config");
+const settingStore = useSettingStore();
+const listenerStore = useListenerStore();
 
-const observer = new MutationObserver((mutations) => {
-  for (const mut of mutations)
-    store.dispatch(
-      "config/setTheme",
-      (<HTMLDivElement>mut.target).classList.contains("dark")
-    );
+const appRoot = ref<HTMLElement | null>(null);
+const modal = ref<InstanceType<typeof ListenerModal> | null>(null);
+
+let triggerClean = ref(false);
+let modalOpts = reactive({
+  interactOutside: false,
+  escapeKeyDown: false
 });
 
-// Provide/ Global Context
-provide(
-  "logDetail",
-  computed(() => logDetail.value)
-);
+function escapeKeyDown(e: KeyboardEvent) {
+  if (!modalOpts.escapeKeyDown) e.preventDefault();
+}
 
-// Variables
-let logDetail: Ref<Log | undefined> = ref();
+function interactOutside(e: PointerDownOutsideEvent | FocusOutsideEvent) {
+  if (!modalOpts.interactOutside) e.preventDefault();
+}
 
-// Computed
-const isDark = computed(() => store.getters["config/isDark"]);
+provide(SettingStoreKey, {
+  settings: settingStore,
+});
 
-// Methods
-const loadState = async () => {
-  const loadedListenerData = await tauriStore.values();
+provide(ThemeKey, {
+  isDark: computed<boolean>(() => settingStore.isDark),
+  theme: computed(() => settingStore.theme),
+});
 
-  if (loadedListenerData.length)
-    store.dispatch("listener/setState", {
-      listeners: loadedListenerData,
-    });
+provide(ListenerStoreKey, {
+  listener: listenerStore,
+});
+
+const open = (id: string) => {
+  listenerStore.setActiveId(id);
+  (appRoot.value?.querySelector(".modalTriggerOpen")! as HTMLButtonElement)?.click();
 };
 
-const loadConfig = async () => {
-  const loadedConfig = await configStore.values();
-
-  if (loadedConfig.length)
-    store.dispatch("config/setState", {
-      ...loadedConfig,
-    });
+const close = () => {
+  listenerStore.setActiveId();
+  (appRoot.value?.querySelector(".modalTriggerClose")! as HTMLButtonElement)?.click();
 };
 
-const onLeave = (el: Element, done: () => void) =>
-  anime({
-    targets: el,
-    opacity: 0,
-    duration: 300,
-    easing: "linear",
-  }).finished.then(() => {
-    done();
-  });
+const remove = (id: string) => {
+  open(id);
+  nextTick(() => modal.value?.remove());
+}
 
-const onEnter = (el: Element, done: () => void) => {
-  const leftBlock = el.querySelector(".left--block");
-  const rightBlock = el.querySelector(".right--block");
+provide(ListenerModalKey, {
+  open,
+  close,
+  remove,
+  modalOpts
+});
 
-  anime({
-    targets: leftBlock,
-    translateY: ["-100%", "0px"],
-    duration: 500,
-  }).finished.then(() => {
-    anime({
-      targets: [leftBlock, rightBlock],
-      opacity: [1, 0],
-      duration: 100,
-      easing: "linear",
-    }).finished.then(() => {
-      (<HTMLDivElement>leftBlock).style.transform = "translateY(-100%)";
-      (<HTMLDivElement>rightBlock).style.transform = "translateY(100%)";
-      done();
+provide("triggerCleaning", triggerClean);
+
+onMounted(() => {
+  (async () => {
+    let settings = await invoke("load_settings");
+    if (settings) settingStore.setState(settings);
+
+    let { logs, listeners }: { logs: ILog[], listeners: IListener[] } = await invoke("load_from_database");
+
+    await listenerStore.setListenerState(listeners);
+    await listenerStore.setLogState(logs);
+
+    listen("log", (a) => {
+      listenerStore.addLog(a.payload as ILog);
+      triggerClean.value = true;
     });
-  });
 
-  anime({
-    targets: rightBlock,
-    translateY: ["100%", "0px"],
-    duration: 500,
-  });
-};
+    await invoke("start_listener");
 
-// LifeCycle
-onBeforeMount(async () => {
-  // watches class attribute of #app to control theming
-  const app = document.getElementById("app");
+    if (settingStore.theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
 
-  observer.observe(app!, {
-    attributes: true,
-    attributeOldValue: true,
-    attributeFilter: ["class"],
-  });
 
-  if (isDark.value) {
-    if (!app?.classList.contains("dark")) app?.classList.add("dark");
-  } else app?.classList.remove("dark");
+    const unlisten = await onUpdaterEvent(({ error, status }) => {
+      // This will log all updater events, including status updates and errors.
+      console.log('Updater event', error, status)
+    })
 
-  listen("logger", (log: any) => {
-    logDetail.value = <Log>log.payload;
+    try {
+      const { shouldUpdate, manifest } = await checkUpdate()
 
-    store.dispatch("triggerClean", true);
-    store.dispatch("listener/addLog", log.payload);
+      if (shouldUpdate) {
+        // You could show a dialog asking the user if they want to install the update here.
+        console.log(
+          `Installing update ${manifest?.version}, ${manifest?.date}, ${manifest?.body}`
+        )
 
-    setTimeout(() => {
-      logDetail.value = undefined;
-      store.dispatch("triggerClean", false);
-    }, 2500);
-  });
+        // Install the update. This will also restart the app on Windows!
+        await installUpdate()
 
-  listen("actionFailure", (response: any) => {
-    toast(response.payload.message, {
-      position: POSITION.BOTTOM_RIGHT,
-      type: TYPE.ERROR,
-    });
-    console.log("Failure Response: ", response);
-  });
+        // On macOS and Linux you will need to restart the app manually.
+        // You could use this step to display another confirmation dialog.
+        await relaunch()
+      }
+    } catch (error) {
+      console.error(error)
+    }
 
-  await loadConfig();
-  await loadState();
+    // you need to call unlisten if your handler goes out of scope, for example if the component is unmounted.
+    unlisten()
+
+
+  })();
+
+
 });
 </script>
 
 <template>
-  <div
-    class="main--layout w-screen h-screen flex rounded-lg overflow-hidden bg-l_secondary dark:bg-d_secondary"
-  >
-    <Transition @enter="onEnter" @leave="onLeave">
-      <Settings />
-    </Transition>
+  <div class="relative" ref="appRoot">
+    <AppLayout class="rounded-md" :setting-store="settingStore">
+      <template #listenerModal="{ radius }">
+        <Dialog>
+          <DialogTrigger as="button" class="modalTriggerOpen" />
+          <DialogClose class="modalTriggerClose" />
+          <DialogContent @interact-outside="interactOutside" @escape-key-down="escapeKeyDown"
+            class="p-0 max-w-[100vw] mt-[calc(17px)] border-none h-[calc(100vh-34px)] outline-none">
+            <ListenerModal ref="modal" :open="open" :close="close" :listener="listenerStore" :radius="radius" />
+          </DialogContent>
+        </Dialog>
+      </template>
 
-    <Navbar />
+      <template #titlebar>
+        <Titlebar :setting-store="settingStore" />
+      </template>
 
-    <div class="w-full flex flex-col">
-      <Titlebar />
-      <router-view v-slot="{ Component }">
-        <keep-alive include="Dashboard">
-          <component :is="Component" />
-        </keep-alive>
-      </router-view>
-    </div>
+      <template #navbar="{ adjustWidth }">
+        <Navbar class="adaptive--darker" @adjust-width="adjustWidth" :setting-store="settingStore" />
+      </template>
+
+      <template #default>
+        <router-view></router-view>
+      </template>
+    </AppLayout>
   </div>
 </template>
+
+<style scoped></style>
