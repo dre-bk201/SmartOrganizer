@@ -1,8 +1,11 @@
-name: 'publish'
+name: 'build_release'
 
 on:
-  - workflow_dispatch
-  
+  workflow_dispatch:
+  push:
+      branches:
+      - master
+
 jobs:
   create-release:
     permissions:
@@ -43,7 +46,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # platform: [windows-latest]
         platform: [macos-latest, ubuntu-20.04, windows-latest]
 
 
