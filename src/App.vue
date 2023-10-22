@@ -92,7 +92,11 @@ provide("triggerCleaning", triggerClean);
 onMounted(() => {
   (async () => {
     let settings = await invoke("load_settings");
-    if (settings) settingStore.setState(settings);
+    if (settings) {
+      settingStore.setState(settings);
+      if (settingStore.theme === 'dark') document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    }
 
     let { logs, listeners }: { logs: ILog[], listeners: IListener[] } = await invoke("load_from_database");
 
@@ -104,10 +108,9 @@ onMounted(() => {
       triggerClean.value = true;
     });
 
+    // Starts listener filesystem service
     await invoke("start_listener");
 
-    if (settingStore.theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
 
     // UPDATER
     const unlisten = await onUpdaterEvent(({ error, status }) => {
@@ -118,7 +121,7 @@ onMounted(() => {
       const { shouldUpdate } = await checkUpdate()
       if (shouldUpdate) {
         await installUpdate()
-        if(await platform() !== "win32") await relaunch()
+        if (await platform() !== "win32") await relaunch()
       }
     } catch (error) {
       console.error(error)
