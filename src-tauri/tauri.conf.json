@@ -14,7 +14,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/dre-bk201/so-frontend/releases/download/latest/latest.json"
+        "https://github.com/dre-bk201/SmartOrganizer/releases/latest/download/latest.json"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4Qzc0MDk5Q0E3Q0U1RjUKUldUMTVYekttVURINk02QWJhMVhIL3B2M0hEZU80dGhuRGZUSkJaSi9jMFVyY3hGelFxWldBTUQK"
