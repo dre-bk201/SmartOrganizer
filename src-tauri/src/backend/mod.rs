@@ -37,16 +37,16 @@ pub struct SmartOrganizer {
     debouncer: Debouncer<RecommendedWatcher, FileIdMap>, // does the actual monitoring of the paths
     rx: Arc<Mutex<Receiver<Vec<DebouncedEvent>>>>, // receiver of all events
     database: SqliteConnection,
-    running: bool,
+    is_running: bool,
 }
 
 impl SmartOrganizer {
     pub fn start(&mut self) {
-        if !self.running {
+        if !self.is_running {
             println!("started");
             let rx = self.rx.clone();
             let data = self.listeners.clone();
-            self.running = true;
+            self.is_running = true;
 
             std::thread::Builder::new()
                 .name(String::from("fs"))
@@ -226,7 +226,7 @@ impl SmartOrganizer {
             watched_paths: HashMap::new(),
             listeners: Arc::new(Mutex::new(Vec::new())),
             database,
-            running: false,
+            is_running: false,
         }
     }
 
