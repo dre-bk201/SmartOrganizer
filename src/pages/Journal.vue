@@ -76,8 +76,7 @@ function showContextMenu() {
 }
 
 async function copyToClipboard() {
-  await writeText(`Log Level: ${activeLog.value?.level}\nTimestamp: ${activeLog.value?.timestamp}\ntuMessage: ${activeLog.value?.message}
-`);
+  await writeText(`Log Level: ${activeLog.value?.level}\nTimestamp: ${activeLog.value?.timestamp}\ntuMessage: ${activeLog.value?.message}`);
 }
 </script>
 
@@ -125,10 +124,10 @@ async function copyToClipboard() {
               <DialogContent class="p-0 border-transparent outline-none">
                 <div class="rounded-xl h-[620px] relative flex flex-col px-5 py-2 adaptive--darker overflow-hidden">
                   <!-- Header -->
-                  <section class="flex justify-between text-white">
+                  <section class="flex justify-between text-white pt-2">
                     <h1 class="text-2xl">View Logs</h1>
                     <section class="flex gap-5 items-center">
-                      <Button class="px-2" disabled>Undo Action</Button>
+                      <Button class="px-2 text-xs" disabled>Undo Action</Button>
                       <DialogClose>
                         <CloseIcon
                           class="hover:cursor-pointer text-md p-[2px] box-content bg-gray-500 rounded-md" />
