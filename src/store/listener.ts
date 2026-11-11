@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { InjectionKey } from "vue";
 
 import { Listeners, Logs } from "../data";
-import { invoke } from "@tauri-apps/api";
+import { invoke } from "@tauri-apps/api/core";
 
 export const LISTENERSTORE = "listenerStore";
 
@@ -41,6 +41,7 @@ export const useListenerStore = defineStore(LISTENERSTORE, {
       const deleted = await invoke<null | IListener>("remove_listener", {
         listener: this.findById(id),
       });
+      if (!deleted) throw new Error("Listener was not deleted");
       const idx = this.findIdxById(deleted.id);
       if (idx > -1) this.listeners.splice(idx, 1);
     },
@@ -51,9 +52,10 @@ export const useListenerStore = defineStore(LISTENERSTORE, {
     },
 
     async updateById(id: string, state: IListener) {
-      await invoke<string | null>("update_listener", {
+      const saved = await invoke<string | null>("update_listener", {
         listener: state,
       });
+      if (saved !== id) throw new Error("Listener was not saved");
       let idx = this.findIdxById(id);
       if (idx > -1) this.listeners[idx] = state;
     },
@@ -68,7 +70,8 @@ export const useListenerStore = defineStore(LISTENERSTORE, {
 
     async addListener(listener: IListener) {
       let id = await invoke("add_listener", { listener });
-      if (id == listener.id) this.listeners.push(listener);
+      if (id !== listener.id) throw new Error("Listener was not created");
+      this.listeners.push(listener);
     },
 
     findIdxById(id: string) {

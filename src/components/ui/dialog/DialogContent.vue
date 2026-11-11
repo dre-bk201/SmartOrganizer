@@ -8,7 +8,7 @@ import {
   DialogPortal,
   useEmitAsProps,
 } from 'radix-vue'
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<DialogContentProps & { class?: string, showCloseButton?: boolean }>()
@@ -20,7 +20,7 @@ const emitsAsProps = useEmitAsProps(emits)
 <template>
   <DialogPortal>
     <DialogOverlay
-      class="fixed mt-[34px] h-[calc(100vh-34px)] inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
     />
     <DialogContent
       :class="

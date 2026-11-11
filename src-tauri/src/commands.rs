@@ -17,9 +17,9 @@ pub async fn start_listener(state: tauri::State<'_, State>) -> Result<(), ()> {
 pub async fn add_listener(
     listener: ListenerData,
     state: tauri::State<'_, State>,
-) -> Result<String, ()> {
+) -> Result<String, String> {
     let mut o = state.inner().inner.lock().await;
-    Ok(o.add_listener(&listener).await.unwrap())
+    o.add_listener(&listener).await.map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize)]
@@ -29,19 +29,19 @@ pub struct LoadedState {
 }
 
 #[command]
-pub async fn load_from_database(state: tauri::State<'_, State>) -> Result<LoadedState, ()> {
+pub async fn load_from_database(state: tauri::State<'_, State>) -> Result<LoadedState, String> {
     let mut o = state.inner().inner.lock().await;
     let listeners = ListenerQuery::fetch_all(o.database())
         .await
-        .unwrap()
+        .map_err(|e| e.to_string())?
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
 
-    let logs = LogQuery::fetch_all(o.database()).await.unwrap().unwrap();
+    let logs = LogQuery::fetch_all(o.database()).await.map_err(|e| e.to_string())?.unwrap_or_default();
 
     for d in listeners.iter() {
-        o.add_listener(d).await.unwrap();
+        o.add_listener(d).await.map_err(|e| e.to_string())?;
     }
 
     Ok(LoadedState { listeners, logs })
@@ -51,9 +51,9 @@ pub async fn load_from_database(state: tauri::State<'_, State>) -> Result<Loaded
 pub async fn remove_listener(
     listener: ListenerData,
     state: tauri::State<'_, State>,
-) -> Result<Option<ListenerData>, ()> {
+) -> Result<Option<ListenerData>, String> {
     let mut o = state.inner().inner.lock().await;
-    Ok(o.remove_listener(&listener).await)
+    o.remove_listener(&listener).await.map_err(|e| e.to_string())
 }
 
 #[command]
@@ -66,9 +66,9 @@ pub async fn save_log(log: Log, state: tauri::State<'_, State>) -> Result<bool, 
 pub async fn update_listener(
     listener: ListenerData,
     state: tauri::State<'_, State>,
-) -> Result<String, ()> {
+) -> Result<String, String> {
     let mut o = state.inner().inner.lock().await;
-    Ok(o.update_listener(&listener).await)
+    o.update_listener(&listener).await.map_err(|e| e.to_string())
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]

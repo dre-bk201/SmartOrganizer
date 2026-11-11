@@ -3,7 +3,8 @@ import EditIcon from "~icons/edit";
 import TrashIcon from "~icons/trash";
 
 import { useModel, reactive, watchEffect } from "vue";
-import { dialog, invoke } from "@tauri-apps/api";
+import {  invoke } from "@tauri-apps/api/core";
+import * as dialog from "@tauri-apps/plugin-dialog"
 
 interface Props {
   modelValue: IListener;
@@ -69,14 +70,8 @@ watchEffect(() => {
     <!-- MONITOR DETAIL -->
 
     <div class="flex gap-3">
-      <EditIcon
-        @click="edit(idx)"
-        class="scale-110 text-xl p-2 rounded-md box-content hover:dark:bg-dark_bg dark:text-gray-300 hover:dark:text-blue-500"
-      />
-      <TrashIcon
-        @click="remove(idx)"
-        class="scale-110 text-xl p-2 rounded-md box-content hover:dark:bg-dark_bg dark:text-gray-300 hover:dark:text-red-600"
-      />
+      <button type="button" class="flow-icon-button" aria-label="Change folder" @click="edit(idx)"><EditIcon /></button>
+      <button type="button" class="flow-icon-button" aria-label="Remove monitor" @click="remove(idx)"><TrashIcon /></button>
     </div>
   </li>
 </template>

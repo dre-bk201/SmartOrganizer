@@ -1,7 +1,10 @@
+use sqlx::Connection;
+fn parse_db<T: std::str::FromStr>(value: &str) -> Result<T, sqlx::Error>
+where T::Err: std::error::Error + Send + Sync + 'static {
+    value.parse().map_err(|error| sqlx::Error::Decode(Box::new(error)))
+}
 use super::*;
 
-#[test]
-fn insert_test() {}
 
 impl LogQuery {
     pub async fn create(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
@@ -20,16 +23,12 @@ impl LogQuery {
         )
         .execute(conn)
         .await
-        .expect("Failed to create table `Log`");
+        ?;
 
         Ok(())
     }
 
     pub async fn drop(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
-        sqlx::query("DROP TABLE IF EXISTS ListenerData")
-            .execute(conn.borrow_mut())
-            .await
-            .expect("Cannot drop table `ListenerData`");
         sqlx::query("DROP TABLE IF EXISTS Log")
             .execute(conn)
             .await
@@ -48,15 +47,8 @@ impl LogQuery {
     }
 
     pub async fn fetch_all(conn: &mut SqliteConnection) -> Result<Option<Vec<Log>>, sqlx::Error> {
-        let rowres = match sqlx::query_as::<_, LogRow>("SELECT * FROM LOG")
-            .fetch_all(conn)
-            .await
-        {
-            Ok(v) => Some(v.into_iter().map(|a| a.into()).collect::<Vec<Log>>()),
-            Err(_) => None,
-        };
-
-        Ok(rowres)
+        let rows = sqlx::query_as::<_, LogRow>("SELECT * FROM LOG").fetch_all(conn).await?;
+        Ok(Some(rows.into_iter().map(Into::into).collect()))
     }
 
     pub async fn insert_one(conn: &mut SqliteConnection, log: &Log) -> bool {
@@ -154,7 +146,7 @@ impl ListenerQuery {
             timestamp TEXT,
             action TEXT,
             parent_id TEXT,
-            destination TEXT,
+            destination TEXT
         )
         ",
         )
@@ -170,17 +162,12 @@ impl ListenerQuery {
     ) -> Result<Option<ListenerData>, sqlx::Error> {
         let removed = Self::fetch_one(conn.borrow_mut(), id).await?;
 
-        match sqlx::query(&format!("DELETE FROM {} WHERE id=?", "ListenerData"))
-            .bind(id)
-            .execute(conn.borrow_mut())
-            .await
-        {
-            Ok(_) => println!("table `ListenerData` successfully cleared"),
-            Err(e) => println!("failed to clear table: {e}"),
-        };
-
-        println!("removed from db: {removed:?}");
-
+        // Explicit child cleanup also supports databases created without cascade constraints.
+        let mut tx = conn.begin().await?;
+        for table in ["Monitor", "Rule", "Action", "ListenerData"] {
+            sqlx::query(&format!("DELETE FROM {table} WHERE id=?")).bind(id).execute(&mut *tx).await?;
+        }
+        tx.commit().await?;
         Ok(removed)
     }
 
@@ -188,8 +175,10 @@ impl ListenerQuery {
         conn: &mut SqliteConnection,
         data: &ListenerData,
     ) -> Result<(), sqlx::Error> {
-        Self::remove_one(conn.borrow_mut(), &data.id).await?;
-        Self::insert_one(conn.borrow_mut(), data).await?.unwrap();
+        let mut tx = conn.begin().await?;
+        Self::remove_one(&mut tx, &data.id).await?;
+        Self::insert_one(&mut tx, data).await?;
+        tx.commit().await?;
         Ok(())
     }
 
@@ -197,6 +186,7 @@ impl ListenerQuery {
         conn: &mut SqliteConnection,
         l: &ListenerData,
     ) -> Result<Option<ListenerData>, sqlx::Error> {
+        let mut tx = conn.begin().await?;
         sqlx::query(
             "
             INSERT INTO ListenerData (id, created, deep, title, enabled, selection) 
@@ -209,7 +199,7 @@ impl ListenerQuery {
         .bind(&l.title)
         .bind(l.enabled)
         .bind(l.selection.to_string())
-        .execute(conn.borrow_mut())
+        .execute(&mut *tx)
         .await?;
 
         for monitor in l.monitors.iter() {
@@ -221,7 +211,7 @@ impl ListenerQuery {
             )
             .bind(&l.id)
             .bind(monitor.to_str().unwrap())
-            .execute(conn.borrow_mut())
+            .execute(&mut *tx)
             .await?;
         }
 
@@ -235,10 +225,10 @@ impl ListenerQuery {
             .bind(&l.id)
             .bind(rule.search.to_string())
             .bind(rule.condition.to_string())
-            .bind(rule.data.text.join(" "))
+            .bind(serde_json::to_string(&rule.data.text).expect("string array serialization"))
             .bind(rule.data.size.0 as i64)
             .bind(rule.data.size.1.to_string())
-            .execute(conn.borrow_mut())
+            .execute(&mut *tx)
             .await?;
         }
 
@@ -252,17 +242,12 @@ impl ListenerQuery {
             .bind(&l.id)
             .bind(action.to_string())
             .bind(path.to_str().unwrap())
-            .execute(conn.borrow_mut())
+            .execute(&mut *tx)
             .await?;
         }
 
-        let found = Self::fetch_one(conn.borrow_mut(), &l.id)
-            .await
-            .expect("Unable to fetch");
-
-        dbg!(&found);
-
-        Ok(found)
+        tx.commit().await?;
+        Ok(Some(l.clone()))
     }
 
     pub async fn fetch_one(
@@ -315,33 +300,29 @@ impl ListenerQuery {
             title: lrow.title,
             enabled: lrow.enabled,
             deep: lrow.deep,
-            selection: lrow.selection.parse().unwrap(),
+            selection: parse_db(&lrow.selection)?,
             monitors: mrow
                 .into_iter()
                 .map(|s| PathBuf::from(s.monitor_path))
                 .collect(),
             rules: rrow
                 .into_iter()
-                .map(|s| Rule {
-                    search: s.search.parse().unwrap(),
-                    condition: s.condition.parse().unwrap(),
+                .map(|s| Ok(Rule {
+                    search: parse_db(&s.search)?,
+                    condition: parse_db(&s.condition)?,
                     data: crate::Data {
-                        text: s
-                            .rule_text
-                            .split_whitespace()
-                            .map(|v| v.to_owned())
-                            .collect::<Vec<String>>(),
-                        size: (s.rule_size as u64, s.rule_sizeopt.parse().unwrap()),
+                        text: serde_json::from_str::<Vec<String>>(&s.rule_text).unwrap_or_else(|_| s.rule_text.split_whitespace().map(str::to_owned).collect()),
+                        size: (s.rule_size.try_into().map_err(|_| sqlx::Error::Decode("Negative rule size".into()))?, parse_db(&s.rule_sizeopt)?),
                     },
-                })
-                .collect(),
+                }))
+                .collect::<Result<_, sqlx::Error>>()?,
             actions: arow
                 .into_iter()
-                .map(|a| Action {
-                    action: a.action.parse().unwrap(),
+                .map(|a| Ok(Action {
+                    action: parse_db(&a.action)?,
                     path: PathBuf::from(a.action_path),
-                })
-                .collect(),
+                }))
+                .collect::<Result<_, sqlx::Error>>()?,
         }))
     }
 
@@ -355,9 +336,7 @@ impl ListenerQuery {
         let mut res = Vec::with_capacity(ls.len());
 
         for l in ls {
-            if let Ok(data) = Self::fetch_one(conn.borrow_mut(), &l.id).await {
-                res.push(data);
-            }
+            res.push(Self::fetch_one(conn.borrow_mut(), &l.id).await?);
         }
 
         Ok(res)

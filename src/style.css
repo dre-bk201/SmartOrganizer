@@ -1,125 +1,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root{--flow-bg:#fcf9fa;--flow-surface:#f5edef;--flow-border:#e8d9dd;--flow-text:#422b32;--flow-muted:#80616b;--flow-accent:#a32949;--flow-accent-soft:#f5dfe6;--background:340.0 33.3% 98.2%;--foreground:341.7 21.1% 21.4%;--primary:344.3 59.8% 40.0%;--primary-foreground:0.0 0.0% 100.0%;--border:344.0 24.6% 88.0%;--input:344.0 24.6% 88.0%;--ring:344.3 59.8% 40.0%;--card:340.0 33.3% 98.2%;--card-foreground:341.7 21.1% 21.4%;--popover:340.0 33.3% 98.2%;--popover-foreground:341.7 21.1% 21.4%;--secondary:345.0 28.6% 94.5%;--secondary-foreground:341.7 21.1% 21.4%;--muted:345.0 28.6% 94.5%;--muted-foreground:340.6 13.8% 44.1%;--accent:340.9 52.4% 91.8%;--accent-foreground:341.7 21.1% 21.4%;--destructive:0 65% 40%;--destructive-foreground:0 0% 100%;--radius:.75rem}
+.dark{--flow-bg:#281e23;--flow-surface:#20171c;--flow-border:#57404b;--flow-text:#f7e8ed;--flow-muted:#d2b3be;--flow-accent:#efa2b7;--flow-accent-soft:#51303d;--background:330.0 14.3% 13.7%;--foreground:340.0 48.4% 93.9%;--primary:343.6 70.6% 78.6%;--primary-foreground:330.0 14.3% 13.7%;--border:331.3 15.2% 29.6%;--input:331.3 15.2% 29.6%;--card:330.0 14.3% 13.7%;--card-foreground:340.0 48.4% 93.9%;--popover:330.0 14.3% 13.7%;--popover-foreground:340.0 48.4% 93.9%;--secondary:326.7 16.4% 10.8%;--secondary-foreground:340.0 48.4% 93.9%;--muted:326.7 16.4% 10.8%;--muted-foreground:338.7 25.6% 76.3%;--accent:336.4 25.6% 25.3%;--accent-foreground:340.0 48.4% 93.9%}
+*{box-sizing:border-box;border-color:var(--flow-border)}body{margin:0;font:14px/1.5 'Segoe UI',sans-serif;background:var(--flow-bg);color:var(--flow-text)}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}input,select{accent-color:var(--flow-accent);caret-color:var(--flow-accent)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--flow-accent);outline-offset:3px}::selection{background:var(--flow-accent-soft);color:var(--flow-text)}::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:var(--flow-border);border-radius:6px}
+.adaptive--dark,.adaptive--darker,.adaptive--dark--invert{background:var(--flow-bg)!important;color:var(--flow-text)!important}.adaptive--dark--invert{background:var(--flow-surface)!important}
+.flow-primary,.flow-button{border-radius:6px;padding:9px 14px;font-weight:600;font-size:13px;border:1px solid var(--flow-border);white-space:nowrap}.flow-primary{background:var(--flow-accent);color:var(--flow-accent-ink);border-color:transparent}.flow-button{background:var(--flow-bg);color:var(--flow-text)}.flow-button:hover{background:var(--flow-accent-soft)}.flow-danger{color:#b53b38;background:none;padding:9px 0}.flow-help{color:var(--flow-muted);font-size:13px}.flow-check{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px}
+.flow-editor{display:flex;flex-direction:column;background:var(--flow-bg);color:var(--flow-text);width:100%;height:100%;min-height:0}.flow-editor-header{padding:24px 30px;border-bottom:1px solid var(--flow-border);display:flex;justify-content:space-between;gap:20px}.flow-editor h1{font-size:25px;letter-spacing:-.025em;font-weight:600;margin:0 0 6px}.flow-editor h2{font-size:16px;font-weight:600;margin:0 0 8px}.flow-editor-header p,.flow-editor-aside p{color:var(--flow-muted);font-size:13px}.flow-editor-layout{display:grid;grid-template-columns:minmax(0,1fr) 210px;overflow:auto;min-height:0;flex:1;padding:28px 30px;gap:30px}.flow-step{display:grid;grid-template-columns:28px minmax(0,1fr);gap:14px;padding-bottom:30px;position:relative}.flow-step:not(:last-child):before{content:'';position:absolute;left:13px;top:32px;bottom:8px;border-left:1px solid var(--flow-border)}.flow-step-number{display:grid;place-items:center;border:1px solid var(--flow-border);border-radius:50%;width:28px;height:28px;font-size:13px}.flow-step>div{min-width:0}.flow-step>div>div,.flow-step li{margin-bottom:10px}.flow-empty-inline{padding:15px 0;color:var(--flow-muted);font-size:13px}.flow-matching{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;padding:4px 0 16px}.flow-matching label{display:flex;align-items:center;gap:5px}.flow-editor-aside{border-left:1px solid var(--flow-border);padding-left:24px}.flow-editor-aside input{width:100%;border:1px solid var(--flow-border);border-radius:6px;padding:9px;margin:8px 0 28px;background:var(--flow-bg);color:var(--flow-text)}.flow-editor-aside p{margin-bottom:20px}.flow-editor-footer{display:flex;align-items:center;justify-content:space-between;padding:16px 30px;gap:15px;border-top:1px solid var(--flow-border)}.flow-editor-footer .flow-check{margin:0}.flow-editor .shadow-xl,.flow-editor .shadow-md{box-shadow:none}.flow-editor li{list-style:none}.flow-editor .adaptive--dark{border:1px solid var(--flow-border);padding:12px;background:var(--flow-surface)!important}.flow-editor input:not([type=checkbox]):not([type=radio]){background:var(--flow-bg)!important;color:var(--flow-text)!important;border:1px solid var(--flow-border);font-size:13px}.flow-editor [class*="text-[#925EFF]"]{color:var(--flow-accent)}.flow-editor [class*="bg-[#424349]"]{background:var(--flow-surface)!important;color:var(--flow-text)}.flow-editor img{display:none}.flow-editor .flex.gap-3.items-center{flex-wrap:wrap}.flow-editor .grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){.flow-editor-layout{grid-template-columns:1fr;padding:20px;gap:20px}.flow-editor-aside{border-left:0;border-top:1px solid var(--flow-border);padding:20px 0;grid-row:1}.flow-editor-aside h2,.flow-editor-aside p{display:none}.flow-editor-aside input{margin-bottom:0}.flow-editor-header{padding:20px}.flow-editor-footer{padding:16px;flex-wrap:wrap}.flow-editor .flow-step{grid-template-columns:24px minmax(0,1fr);gap:10px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 
-* {
-  padding: 0px;
-  margin: 0px;
-  box-sizing: border-box;
-  user-select: none;
-}
+:root{--flow-accent-ink:#fff}.dark{--flow-accent-ink:#281e23}
 
-.adaptive--darker {
-  @apply dark:!bg-darker !bg-lighter dark:!text-gray-300 !text-gray-800;
-}
+.flow-icon-button{padding:8px;border-radius:6px;color:var(--flow-muted)}.flow-icon-button:hover{background:var(--flow-accent-soft);color:var(--flow-text)}.flow-icon-button svg{width:18px;height:18px}.flow-editor .text-blue-600{color:var(--flow-accent)}.flow-editor .text-xl{font-size:14px}.flow-editor .flow-steps input[type=number]{min-width:70px}.flow-editor .flow-steps .w-0{min-width:90px}.flow-editor .flow-steps li{overflow-wrap:anywhere}
 
-.adaptive--dark {
-  @apply dark:!bg-dark !bg-light;
-}
+.flow-editor .flow-steps .w-0{width:auto;flex-basis:100%;min-height:42px}.flow-editor .flow-steps .w-0 input{min-width:40px}.flow-editor .flow-steps .w-0 li{border:0;padding:3px 6px;margin:0}.flow-editor .flow-steps .w-0 ul{flex-wrap:wrap}.flow-editor .flow-steps li>div>p{overflow-wrap:anywhere}
+@media(max-width:520px){.flow-body{flex-direction:column}.flow-navigation{width:100%!important;flex-shrink:0}.flow-sidebar{padding:12px!important;gap:12px!important}.flow-sidebar .brand,.flow-sidebar .sidebar-search,.flow-sidebar .watching,.flow-sidebar .new-listener{display:none!important}.flow-sidebar .navlinks{flex-direction:row!important}.flow-sidebar .sidebar-bottom{flex-direction:row!important;margin:0!important}.flow-sidebar .sidebar-action{font-size:12px}.flow-content{min-height:0}.flow-editor-header{gap:12px}.flow-editor h1{font-size:21px}.flow-editor .grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-.adaptive--dark--invert {
-  @apply dark:!bg-darker !bg-lighter;
-}
-
-.debug {
-  @apply absolute h-full w-full z-10 bg-red-200;
-}
-
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-  background-color: #aaa; /* or add it to the track */
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 5px;
-  height: 5px;
-}
- 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
- 
-    /* --primary: 222.2 47.4% 11.2%; */
-    --primary: 226.531, 100%, 71%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
-  }
- 
-  .dark {
-    --background: 230 6% 20%;
-    --foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    /* --border: 230 6% 20%; */
-    --input: 217.2 32.6% 17.5%;
- 
-    /* --primary: 210 40% 98%; */
-    --primary: 226.531 100% 71%;
-    /* --primary-foreground: 222.2 47.4% 11.2%; */
-    --primary-foreground: 230, 6%, 20%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    /* --accent: 217.2 32.6% 17.5%; */
-    --accent: 230, 6%, 20%;
-    --accent-foreground: 230, 6%, 20%;
-    /* --accent-foreground: 210 40% 98%; */
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --ring: 212.7 26.8% 83.9%;
-  }
-}
- 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+.flow-steps{min-width:0}.flow-editor-layout{overflow-x:hidden}@media(max-width:760px){.flow-editor-layout{grid-template-columns:minmax(0,1fr)}.flow-editor .flow-steps .flex{min-width:0;flex-wrap:wrap}.flow-editor .flow-steps .flex-grow{min-width:0}.flow-editor .flow-steps .grid{gap:12px}.flow-editor .flow-steps .whitespace-nowrap{white-space:normal}}

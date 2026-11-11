@@ -1,12 +1,9 @@
-#![feature(lazy_cell)]
 mod backend;
 mod database;
-#[cfg(test)]
-mod fakedata;
+
 mod models;
 mod schemas;
-#[cfg(test)]
-mod test;
+
 
 use std::sync::LazyLock;
 
@@ -20,7 +17,9 @@ pub static DIRS: LazyLock<ProjectDirs> = LazyLock::new(|| {
 
 pub use backend::*;
 pub use database::*;
-#[cfg(test)]
-pub use fakedata::*;
+
 pub use models::*;
 pub use schemas::*;
+
+#[cfg(test)]
+mod test;

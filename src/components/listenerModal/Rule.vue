@@ -54,8 +54,7 @@ function disabled(search: TSearch) {
         :options="sizeOpts" />
     </div>
 
-    <TrashIcon @click="remove(idx)"
-      class="ml-2 flex-shrink-0 box-content p-2 text-lg adaptive--dark--invert rounded-md" />
+    <button type="button" class="flow-icon-button" aria-label="Remove rule" @click="remove(idx)"><TrashIcon /></button>
   </div>
 </template>
 

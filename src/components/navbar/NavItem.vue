@@ -1,57 +1,15 @@
 <script setup lang="ts">
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from "@/components/ui/tooltip";
-
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-const props = defineProps<{ to: string, name: string, isPinned: boolean }>();
-
-const isActive = computed(() => router.currentRoute.value.name == props.name);
-const tooltipText = computed(() => props.isPinned ? props.name : '');
-//@ts-ignore
-const sideOffset = computed<number>(() => "1")
+import { useRoute } from 'vue-router';
+const route = useRoute();
+const props = defineProps<{ to: string; name: string; isPinned: boolean }>();
+const isActive = computed(() => route.name === props.name);
 </script>
-
 <template>
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger>
-        <router-link :to="to" class="navitem"
-          :class="[isPinned ? 'navitem--pinned' : 'navitem--unpinned', isActive && 'dark:bg-[#424350] bg-light_hl']">
-          <span :class="`highlight--block ${isActive ? 'w-[9px] mr-2' : 'w-0 mr-4 '}`" />
-          <slot :isActive="isActive" name="icon"></slot>
-
-          <div v-show="!isPinned" class="text-base block" :class="[isActive && 'text-blue-500']">
-            <slot>{{ name }}</slot>
-          </div>
-        </router-link>
-      </TooltipTrigger>
-
-      <TooltipContent :class="['bg-primary', tooltipText.length || 'p-0']" side="right" :side-offset="sideOffset">{{ tooltipText }}</TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
+  <router-link :to="to" class="navitem" :class="{ active: isActive, collapsed: isPinned }" :aria-label="isPinned ? name : undefined" :title="isPinned ? name : undefined" :aria-current="isActive ? 'page' : undefined">
+    <span class="nav-icon"><slot name="icon" :is-active="isActive" /></span><span v-if="!isPinned"><slot>{{ name }}</slot></span>
+  </router-link>
 </template>
-
 <style scoped>
-.navitem {
-  @apply w-full flex items-center relative text-2xl py-4 rounded-md dark:hover:bg-[#424349] hover:bg-light_hl dark:text-gray-200 text-gray-700;
-}
-
-.navitem--unpinned {
-  @apply pl-5 gap-3;
-}
-
-.navitem--pinned {
-  @apply justify-center w-[60px];
-}
-
-.highlight--block {
-  @apply absolute left-0 ease-in transition-all rounded-r-lg h-8 bg-blue-500;
-}
+.navitem{display:flex;align-items:center;gap:8px;padding:11px 8px;border-radius:6px;font-size:13px;color:var(--flow-muted,#80616b);text-decoration:none}.navitem:hover{background:var(--flow-bg,#fcf9fa)}.navitem.active{background:var(--flow-bg,#fcf9fa);color:var(--flow-accent,#a32949);font-weight:650}.nav-icon{display:flex;width:18px;height:18px;flex-shrink:0}.nav-icon :deep(svg){width:18px;height:18px}.collapsed{justify-content:center;padding:11px 8px}
 </style>

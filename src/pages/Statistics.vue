@@ -1,127 +1,27 @@
 <script setup lang="ts">
-//@ts-nocheck
+import { computed, inject } from 'vue';
 import Chart from 'primevue/chart';
-import StatsFolder from "~icons/stats_folder";
-import StatsFile from "~icons/stats_file";
-
-import { inject, onMounted, reactive, ref } from 'vue';
-import { ListenerStoreKey } from '../store';
-import { stringToColour } from "../utils";
-import { format } from 'date-fns';
-
+import { ListenerStoreKey, ThemeKey } from '../store';
+import { format, isValid } from 'date-fns';
 const { listener } = inject(ListenerStoreKey)!;
-
-let chartData = reactive({
-  labels: [] as string[],
-  datasets: [
-    {
-      label: "Listeners",
-      data: [] as number[],
-      borderWidth: 2
-    }
-  ]
-});
-
-const chartOptions = ref({
-  scales: {
-    y: {
-      beginAtZero: true,
-    },
-  },
-});
-
-function generateChartData(listeners: IListener[], logs: ILog[]) {
-
-  listeners.forEach(listener => {
-    chartData.labels.push(listener.title);
-    chartData.datasets[0].data.push(logs.filter(log => log.parentId == listener.id).length);
-  });
-
-}
-
-onMounted(() => {
-  generateChartData(listener.listeners, listener.logs);
-});
-
+const theme = inject(ThemeKey);
+const byListener = computed(() => listener.listeners.map(item => ({ id: item.id, title: item.title, count: listener.logs.filter(log => log.parentId === item.id).length })).sort((a,b) => b.count-a.count));
+const errors = computed(() => listener.logs.filter(log => log.level === 'ERROR').length);
+const monitoredFolders = computed(() => new Set(listener.listeners.flatMap(item => item.monitors)).size);
+const recent = computed(() => [...listener.logs].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0,8));
+const chartData = computed(() => ({ labels: byListener.value.map(item => item.title), datasets: [{ label: 'Recorded actions', data: byListener.value.map(item => item.count), backgroundColor: theme?.isDark.value ? '#efa2b7' : '#b9385b', borderRadius: 4, maxBarThickness: 52 }] }));
+const chartOptions = computed(() => { const ink = theme?.isDark.value ? '#d2b3be' : '#80616b'; const line = theme?.isDark.value ? '#57404b' : '#e8d9dd'; return { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, color: ink }, grid: { color: line }, border: { display: false } }, x: { ticks: { color: ink }, grid: { display: false }, border: { display: false } } } }; });
+function filename(path: string) { return path.split(/[\\/]/).filter(Boolean).pop() || path; }
+function timestamp(value: string) { const date = new Date(value); return isValid(date) ? format(date, 'MMM d, HH:mm') : 'Unknown time'; }
 </script>
-
 <template>
-  <main class="px-5 h-0 py-8 flex-grow flex flex-col gap-5 overflow-y-auto">
-    <section class="flex rounded-md relative dark:bg-dark !bg-opacity-70 p-6 gap-5 lg:h-[400px] md:h-[250px]">
-      <h1 class="text-primary font-bold absolute left-11 top-[-15px] shadow-2xl px-2 py-1 rounded-md bg-[#303136]">
-        Files affected for listener per day
-      </h1>
-
-      <Chart class="flex-grow rounded-md p-1" type="bar" :data="chartData" :options="chartOptions" />
-
-      <div class="dark:bg-darker !bg-opacity-50 flex-shrink-0 min-w-[250px] max-w-3xl rounded-md p-2 flex flex-col gap-2">
-        <h1>Keys for listeners </h1>
-        <hr />
-        <ul class="flex flex-col overflow-y-auto gap-4">
-          <li v-for="l, idx in listener.listeners" class="items-center gap-2">
-            <span class="w-2 h-2 rounded-md inline-block" :style="{ background: stringToColour(l.title + l.id) }" />
-            {{ l.title }} #{{ idx + 1 }}
-          </li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="flex gap-5">
-      <section class="flex flex-col flex-grow gap-5">
-        <div class="f1 text-white relative flex flex-col pl-5 py-5 gap-3 rounded-lg bg-indigo-400">
-          <div class="overlay absolute top-0 left-0 h-full w-full"></div>
-          <StatsFolder class="text-lg" />
-          <span class="text-lg">Folders Affected</span>
-          <span class="font-bold">0</span>
-        </div>
-        <div class="f2 text-white  relative flex flex-col pl-5 py-5 gap-3 rounded-lg bg-indigo-400">
-          <div class="overlay absolute top-0 left-0 h-full w-full"></div>
-          <StatsFile class="text-lg" />
-          <span class="text-lg">Files Organized</span>
-          <span class="font-bold">{{ listener.logs.length }}</span>
-        </div>
-      </section>
-      <div class="rounded-md flex flex-col gap-3 flex-grow adaptive--dark px-4 py-4">
-        <h1 class="text-xl dark:text-white font-bold">Listener Highlights</h1>
-
-        <span class="gridlayout text-gray-400">
-          <span>Folder/File</span>
-          <span>Actions</span>
-          <span>Time</span>
-        </span>
-
-        <section class="flex-grow flex divide-y divide-gray-600 text-gray-400 flex-col h-0 overflow-y-auto">
-          <div class="gridlayout relative py-4" v-for="log in listener.logs">
-            <span class="text-ellipsis rtl-grid overflow-hidden whitespace-nowrap mr-4">{{ log.path.split("/").at(-1)
-            }}</span>
-            <span>{{ log.action }}</span>
-            <span>{{ format(new Date(log.timestamp), "PPpp") }}</span>
-          </div>
-        </section>
-      </div>
-    </section>
+  <main class="statistics"><header><h1>A little more organized.</h1><p>Activity across your listeners, from your recorded journal.</p></header>
+    <dl class="summary"><div><dd>{{ listener.logs.length }}</dd><dt>recorded actions</dt></div><div><dd>{{ monitoredFolders }}</dd><dt>watched folders</dt></div><div><dd>{{ errors }}</dd><dt>errors</dt></div></dl>
+    <section aria-labelledby="chart-heading"><div class="section-heading"><h2 id="chart-heading">Activity by listener</h2><span>All recorded activity</span></div><div v-if="byListener.length && listener.logs.length" class="chart-container"><Chart type="bar" :data="chartData" :options="chartOptions" class="chart" /></div><div v-else class="empty"><h3>Your activity starts here.</h3><p>Once a listener acts on your files, you can compare its activity here.</p><router-link to="/">Go to dashboard</router-link></div></section>
+    <section v-if="byListener.length" class="breakdown" aria-labelledby="listeners-heading"><h2 id="listeners-heading">Listener breakdown</h2><div v-for="item in byListener" :key="item.id" class="breakdown-row"><span>{{ item.title || 'Untitled listener' }}</span><strong>{{ item.count }} {{ item.count === 1 ? 'action' : 'actions' }}</strong></div></section>
+    <section class="highlights" aria-labelledby="highlights-heading"><div class="section-heading"><h2 id="highlights-heading">Latest actions</h2><router-link to="/journal">View journal</router-link></div><div v-if="recent.length" class="table-scroll"><table><thead><tr><th>File or folder</th><th>Action</th><th>Time</th></tr></thead><tbody><tr v-for="log in recent" :key="log.id"><td :title="log.path">{{ filename(log.path) }}</td><td>{{ log.action }}</td><td>{{ timestamp(log.timestamp) }}</td></tr></tbody></table></div><p v-else class="muted">No actions recorded yet.</p></section>
   </main>
 </template>
-
 <style scoped>
-.gridlayout {
-  display: grid;
-  grid-template-columns: 0.55fr 100px 0.4fr;
-}
-
-.rtl-grid {
-  direction: rtl;
-}
-
-.f1 {
-  background: linear-gradient(85.9deg, #8337FF 1.1%, #9656FF 51.75%, #9C76DA 102.37%);
-}
-
-.f2 {
-  background: linear-gradient(86.09deg, #3F4FDB 4.16%, #5A66D0 42.86%, #727DDD 96.62%);
-}
-
-.overlay {
-  background: url("../../src/assets/img/overlay.png");
-}
+.statistics{padding:32px;overflow:auto;flex:1;min-height:0;color:var(--flow-text,#422b32)}header{margin-bottom:29px}h1{font-size:27px;line-height:1.2;letter-spacing:-.025em;font-weight:650;margin-bottom:10px}header p,.muted{font-size:13px;color:var(--flow-muted,#80616b)}.summary{display:flex;gap:30px;flex-wrap:wrap;border-bottom:1px solid var(--flow-border,#e8d9dd);padding-bottom:23px;margin-bottom:28px}.summary div{display:flex;align-items:baseline;gap:8px}.summary dd{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums}.summary dt{font-size:13px;color:var(--flow-muted,#80616b)}h2{font-size:16px;font-weight:600}.section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.section-heading span,.section-heading a{font-size:12px;color:var(--flow-muted,#80616b)}a:hover{color:var(--flow-accent,#a32949);text-decoration:underline}.chart-container{height:240px}.chart{height:100%}.chart :deep(canvas){max-height:240px}.breakdown,.highlights{margin-top:34px}.breakdown h2{margin-bottom:12px}.breakdown-row{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--flow-border,#e8d9dd);padding:13px 0;font-size:13px}.breakdown-row strong{font-weight:500;color:var(--flow-muted,#80616b);white-space:nowrap;font-variant-numeric:tabular-nums}table{width:100%;border-collapse:collapse;text-align:left}th{font-size:12px;font-weight:500;color:var(--flow-muted,#80616b);padding:10px 9px;border-bottom:1px solid var(--flow-border,#e8d9dd)}td{font-size:13px;padding:14px 9px;border-bottom:1px solid var(--flow-border,#e8d9dd)}th:first-child,td:first-child{padding-left:0}td:first-child{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}td:last-child{white-space:nowrap;color:var(--flow-muted,#80616b);font-size:12px}.empty{padding:35px 0;color:var(--flow-muted,#80616b);font-size:13px}.empty h3{font-size:17px;font-weight:500;color:var(--flow-text,#422b32);margin-bottom:8px}.empty a{display:inline-block;color:var(--flow-accent,#a32949);margin-top:15px}.table-scroll{overflow:auto}@media(max-width:1000px){.statistics{padding:26px 24px}}@media(max-width:650px){.statistics{padding:24px 18px}h1{font-size:24px}.summary{gap:18px}.section-heading{flex-wrap:wrap}.chart-container{height:210px}td:first-child{max-width:130px}}
 </style>

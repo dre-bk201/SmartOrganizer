@@ -2,7 +2,7 @@
 import { defineStore } from "pinia";
 import { InjectionKey, ComputedRef } from "vue";
 import type { TitlebarStyle } from "../models";
-import { invoke } from "@tauri-apps/api";
+import { invoke } from "@tauri-apps/api/core";
 
 export const SETTINGSTORE = "settingStore";
 
@@ -10,9 +10,9 @@ export type AppTheme = "dark" | "light";
 
 export const useSettingStore = defineStore(SETTINGSTORE, {
   state: () => ({
-    pin: true,
+    pin: false,
     titlebarStyle: "windows" as TitlebarStyle,
-    theme: "dark" as AppTheme,
+    theme: "light" as AppTheme,
     rounded: 15,
   }),
 
@@ -24,12 +24,6 @@ export const useSettingStore = defineStore(SETTINGSTORE, {
 
     async toggleTheme() {
       let theme = this.theme == "dark" ? "light" : "dark";
-
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
 
       let saved = await invoke("save_settings", {
         settings: {
@@ -43,6 +37,7 @@ export const useSettingStore = defineStore(SETTINGSTORE, {
       if (!saved) return;
 
       this.theme = theme;
+      document.documentElement.classList.toggle("dark", theme === "dark");
     },
 
     async setTitlebarStyle(style: TitlebarStyle) {
@@ -71,6 +66,7 @@ export const useSettingStore = defineStore(SETTINGSTORE, {
 
       if (!saved) return;
       this.theme = theme;
+      document.documentElement.classList.toggle("dark", theme === "dark");
     },
 
     async setPin(pin: boolean) {

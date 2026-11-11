@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { DialogClose } from "radix-vue";
 
@@ -20,17 +21,13 @@ import {
 } from "./store";
 
 import { reactive, nextTick, computed, provide, onMounted, ref } from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { platform } from "@tauri-apps/api/os";
-import { FocusOutsideEvent, PointerDownOutsideEvent } from "node_modules/radix-vue/dist/DismissableLayer";
+import { platform } from "@tauri-apps/plugin-os";
 
-import {
-  checkUpdate,
-  installUpdate,
-  onUpdaterEvent,
-} from '@tauri-apps/api/updater'
-import { relaunch } from '@tauri-apps/api/process'
+import { confirm } from '@tauri-apps/plugin-dialog';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process'
 
 const settingStore = useSettingStore();
 const listenerStore = useListenerStore();
@@ -45,10 +42,10 @@ let modalOpts = reactive({
 });
 
 function escapeKeyDown(e: KeyboardEvent) {
-  if (!modalOpts.escapeKeyDown) e.preventDefault();
+  if (!modalOpts.escapeKeyDown) { e.preventDefault(); void modal.value?.requestClose(); }
 }
 
-function interactOutside(e: PointerDownOutsideEvent | FocusOutsideEvent) {
+function interactOutside(e: Event) {
   if (!modalOpts.interactOutside) e.preventDefault();
 }
 
@@ -113,21 +110,16 @@ onMounted(() => {
 
 
     // UPDATER
-    const unlisten = await onUpdaterEvent(({ error, status }) => {
-      console.log('Updater event', error, status)
-    })
-
     try {
-      const { shouldUpdate } = await checkUpdate()
-      if (shouldUpdate) {
-        await installUpdate()
-        if (await platform() !== "win32") await relaunch()
+      const update = await check();
+      if (update && await confirm(`SmartOrganizer ${update.version} is available. Install and restart now?`, { title: "Update available", kind: "info" })) {
+        await update.downloadAndInstall();
+        if (platform() !== "windows") await relaunch();
       }
     } catch (error) {
-      console.error(error)
+      console.error("Update check failed", error);
     }
 
-    unlisten()
   })();
 
 
@@ -142,7 +134,8 @@ onMounted(() => {
           <DialogTrigger as="button" class="modalTriggerOpen" />
           <DialogClose class="modalTriggerClose" />
           <DialogContent @interact-outside="interactOutside" @escape-key-down="escapeKeyDown"
-            class="p-0 max-w-[100vw] mt-[calc(17px)] border-none h-[calc(100vh-34px)] outline-none">
+            class="listener-dialog">
+            <DialogTitle class="sr-only">Edit listener</DialogTitle>
             <ListenerModal ref="modal" :open="open" :close="close" :listener="listenerStore" :radius="radius" />
           </DialogContent>
         </Dialog>
@@ -153,7 +146,7 @@ onMounted(() => {
       </template>
 
       <template #navbar="{ adjustWidth }">
-        <Navbar class="adaptive--darker" @adjust-width="adjustWidth" :setting-store="settingStore" />
+        <Navbar @adjust-width="adjustWidth" :setting-store="settingStore" />
       </template>
 
       <template #default>

@@ -1,309 +1,80 @@
-use chrono::Local;
-
-use crate::{logger::LOGGER, Log, LogLevel};
-
-use super::{Action, ActionOpts};
-use std::path::{Path, PathBuf};
+use crate::{logger::LOGGER, Action, ActionOpts, Log, LogLevel};
+use std::{fs, io, path::{Path, PathBuf}};
 
 pub struct FSActions;
-
 impl FSActions {
-    pub fn operate<P: AsRef<Path>>(
-        id: &str,
-        title: &str,
-        path_found: P,
-        actions: &[Action],
-    ) -> Option<anyhow::Error> {
-        let path_found = path_found.as_ref();
-
-        println!("performing action on: {}", path_found.display());
-
-        // returns if LOGGER is none
-        if LOGGER.lock().unwrap().window().is_none() {
-            println!("Crashing here");
-            return None;
-        }
-
-        if !path_found.exists() {
-            println!(
-                "WARN: {} no longer exists, as such no action will take place",
-                path_found.display()
-            );
-            LOGGER.lock().unwrap().broadcast("log".into(), Log {
-                id: nanoid::nanoid!(),
-                name: title.into(),
-                level: LogLevel::WARN,
-                message: format!("{} no longer exists, as such no action will take place", path_found.display()),
-                path: path_found.to_path_buf(),
-                timestamp: Local::now().to_rfc2822(),
-                action: ActionOpts::DELETE,
-                parent_id: id.into(),
-                destination: PathBuf::from("N/A"),
-            });
-
-            return None;
-        }
-
-        let name = path_found
-            .file_name()
-            .expect("Unable to get filename of file")
-            .to_str()
-            .unwrap();
-
-        let file_kind = if path_found.is_file() {
-            "file"
-        } else {
-            "folder"
-        };
-
-        for Action { action, path } in actions.iter() {
-            match action {
-                ActionOpts::MOVE => {
-                    let to = path.join(path_found.file_name()?);
-
-                    if !to.exists() && path != path_found {
-                        match std::fs::rename(path_found, &to) {
-                            Ok(v) => {
-                                println!(
-                                    "{name} {file_kind} was successfully moved to {}",
-                                    to.display()
-                                );
-
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::SUCCESS,
-                                    message: format!("{name} {file_kind} was successfully moved to {}", to.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: to.to_path_buf()
-                                });
-                            }
-                            Err(e) => {
-                                println!("Failed to copy {name} to {}", to.display());
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::ERROR,
-                                    message: format!("Failed to copy {name} to {}", to.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: to.to_path_buf()
-                                });
-                            }
-                        }
-                    }
-                }
-                ActionOpts::COPY => {
-                    // issue with copying; There either needs to be an path_found:[action.1]
-                    if path.is_file() {
-                        match std::fs::copy(path_found, path) {
-                            Ok(_) => {
-                                println!(
-                                    "{name} {file_kind} was successfully copied to {}",
-                                    path.display()
-                                );
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::SUCCESS,
-                                    message: format!("{name} {file_kind} was successfully copied to {}", path.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: path.to_path_buf()
-                                })
-                            }
-                            Err(_) => {
-                                println!("Failed to copy {name} to {}", path.display());
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::ERROR,
-                                    message: format!("Failed to copy {name} to {}", path.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: path.to_path_buf()
-                                });
-                            }
-                        }
-                    } else {
-                        let to = path.join(path_found.file_name()?);
-                        match std::fs::copy(path_found, &to) {
-                            Ok(_) => {
-                                println!(
-                                    "{name} {file_kind} was successfully copied to {}",
-                                    to.display()
-                                );
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::SUCCESS,
-                                    message: format!("{name} {file_kind} was successfully copied to {}", to.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: to.to_path_buf()
-                                })
-                            }
-                            Err(_) => {
-                                println!("Failed to copy folder {name} to {}", to.display());
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::ERROR,
-                                    message: format!("Failed to copy folder {name} to {}", to.display()),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: to.to_path_buf()
-                                });
-                            }
-                        }
-                    }
-                }
-                ActionOpts::DELETE => match trash::delete(path_found) {
-                    Ok(_) => {
-                        println!("{name} {file_kind} was successfully deleted");
-                        let log = Log {
-                            id: nanoid::nanoid!(),
-                            name: title.into(),
-                            level: LogLevel::SUCCESS,
-                            message: format!("{name} {file_kind} was successfully deleted"),
-                            path: path_found.to_path_buf(),
-                            timestamp: Local::now().to_rfc2822(),
-                            action: action.clone(),
-                            parent_id: id.into(),
-                            destination: PathBuf::from("N/A"),
-                        };
-
-                        LOGGER.lock().unwrap().broadcast(String::from("log"), log);
-                    }
-                    Err(e) => {
-                        println!("Failed to delete {name} {file_kind}");
-                        LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                            id: nanoid::nanoid!(),
-                            name: title.into(),
-                            level: LogLevel::ERROR,
-                            message: format!("Failed to delete {name} {file_kind}"),
-                            path: path_found.to_path_buf(),
-                            timestamp: Local::now().to_rfc2822(),
-                            action: action.clone(),
-                            parent_id: id.into(),
-                            destination: PathBuf::from("N/A"),
-                        });
-                    }
-                },
-                ActionOpts::UNLINK => {
-                    if path_found.is_file() {
-                        match std::fs::remove_file(path_found) {
-                            Ok(_) => {
-                                println!("{name} {file_kind} was successfully unlinked");
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::SUCCESS,
-                                    message: format!("{name} {file_kind} was successfully unlinked"),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: PathBuf::from("N/A"),
-                                });
-                            }
-                            Err(e) => {
-                                println!("Failed to unlink {name} {file_kind}");
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::ERROR,
-                                    message: format!("Failed to unlink {name} {file_kind}"),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: PathBuf::from("N/A"),
-                                });
-                            }
-                        }
-                    } else {
-                        match std::fs::remove_dir_all(path_found) {
-                            Ok(_) => {
-                                println!("{name} {file_kind} was successfully unlinked");
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::SUCCESS,
-                                    message: format!("{name} {file_kind} was successfully unlinked"),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: PathBuf::from("N/A"),
-                                });
-                            }
-                            Err(e) => {
-                                println!("Failed to unlink {name} {file_kind}");
-                                LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                                    id: nanoid::nanoid!(),
-                                    name: title.into(),
-                                    level: LogLevel::ERROR,
-                                    message: format!("Failed to unlink {name} {file_kind}"),
-                                    path: path_found.to_path_buf(),
-                                    timestamp: Local::now().to_rfc2822(),
-                                    action: action.clone(),
-                                    parent_id: id.into(),
-                                    destination: PathBuf::from("N/A"),
-                                });
-                            }
-                        }
-                    }
-                }
-                ActionOpts::RENAME => match std::fs::rename(path_found, path) {
-                    Ok(_) => {
-                        println!(
-                            "{name} {file_kind} was successfully renamed to {}",
-                            path.display()
-                        );
-                        LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                            id: nanoid::nanoid!(),
-                            name: title.into(),
-                            level: LogLevel::SUCCESS,
-                            message: format!("{name} {file_kind} was successfully renamed to {}", path.display()),
-                            path: path_found.to_path_buf(),
-                            timestamp: Local::now().to_rfc2822(),
-                            action: action.clone(),
-                            parent_id: id.into(),
-                            destination: path.to_path_buf(),
-                        })
-                    }
-                    Err(e) => {
-                        println!("Failed to rename {file_kind} {name} to {}", path.display());
-                        LOGGER.lock().unwrap().broadcast(String::from("log"), Log {
-                            id: nanoid::nanoid!(),
-                            name: title.into(),
-                            level: LogLevel::ERROR,
-                            message: format!("Failed to rename {file_kind} {name} to {}", path.display()),
-                            path: path_found.to_path_buf(),
-                            timestamp: Local::now().to_rfc2822(),
-                            action: action.clone(),
-                            parent_id: id.into(),
-                            destination: path.to_path_buf(),
-                        });
-                    }
-                },
+    pub fn operate<P: AsRef<Path>>(id: &str, title: &str, source: P, actions: &[Action]) -> Option<anyhow::Error> {
+        let mut current = source.as_ref().to_path_buf();
+        for action in actions {
+            let result = execute(&current, action);
+            let (level, message, destination) = match &result {
+                Ok(destination) => (LogLevel::SUCCESS, format!("{} completed", action.action), destination.clone().unwrap_or_default()),
+                Err(error) => (LogLevel::ERROR, format!("{} failed: {error}", action.action), action.path.clone()),
+            };
+            LOGGER.lock().unwrap().broadcast("log".into(), Log { id:nanoid::nanoid!(), name:title.into(), level, message, path:current.clone(), timestamp:chrono::Utc::now().to_rfc3339(), action:action.action.clone(), parent_id:id.into(), destination });
+            match result {
+                Ok(Some(path)) => { if matches!(action.action, ActionOpts::MOVE | ActionOpts::RENAME) { current=path; } },
+                Ok(None) => break,
+                Err(error) => return Some(error.into()),
             }
         }
-
         None
     }
+}
+
+fn execute(source: &Path, action: &Action) -> io::Result<Option<PathBuf>> {
+    let metadata=fs::symlink_metadata(source)?;
+    // Never follow a link into an unrelated directory tree during destructive actions.
+    if metadata.file_type().is_symlink() { return Err(io::Error::other("Symbolic links are not supported")); }
+    match action.action {
+        ActionOpts::DELETE => { trash::delete(source).map_err(io::Error::other)?; Ok(None) },
+        ActionOpts::UNLINK => { if metadata.is_dir() { fs::remove_dir_all(source)?; } else { fs::remove_file(source)?; } Ok(None) },
+        ActionOpts::MOVE | ActionOpts::COPY | ActionOpts::RENAME => {
+            if action.path.as_os_str().is_empty() { return Err(io::Error::other("Choose a destination")); }
+            let destination=if matches!(action.action,ActionOpts::RENAME) { action.path.clone() } else {
+                if !action.path.is_dir() { return Err(io::Error::other("Destination must be an existing folder")); }
+                action.path.join(source.file_name().ok_or_else(||io::Error::other("Cannot operate on a filesystem root"))?)
+            };
+            if fs::symlink_metadata(&destination).is_ok() { return Err(io::Error::new(io::ErrorKind::AlreadyExists,"Destination already exists; nothing was overwritten")); }
+            let parent=destination.parent().ok_or_else(||io::Error::other("Invalid destination"))?.canonicalize()?;
+            if parent.starts_with(source.canonicalize()?) { return Err(io::Error::other("Destination cannot be inside the source")); }
+            if matches!(action.action,ActionOpts::COPY) { copy_new(source,&destination)?; }
+            else if metadata.is_file() {
+                // Reserve the new filename atomically; never replace a racing writer.
+                fs::hard_link(source,&destination)?;
+                fs::remove_file(source)?;
+            } else { fs::rename(source,&destination)?; }
+            Ok(Some(destination))
+        }
+    }
+}
+
+fn copy_new(source:&Path,destination:&Path)->io::Result<()> {
+    let metadata=fs::symlink_metadata(source)?;
+    if metadata.file_type().is_symlink() {return Err(io::Error::other("Symbolic links are not supported"));}
+    if metadata.is_dir() {
+        fs::create_dir(destination)?;
+        for entry in fs::read_dir(source)? { let entry=entry?; copy_new(&entry.path(),&destination.join(entry.file_name()))?; }
+    } else {
+        let mut input=fs::File::open(source)?;
+        let mut output=fs::OpenOptions::new().write(true).create_new(true).open(destination)?;
+        io::copy(&mut input,&mut output)?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn copy_does_not_overwrite_and_copies_directories() {
+        let dir=assert_fs::TempDir::new().unwrap();let source=dir.path().join("source");let target=dir.path().join("target");fs::create_dir(&source).unwrap();fs::create_dir(&target).unwrap();fs::write(source.join("note"),"original").unwrap();
+        let action=Action{action:ActionOpts::COPY,path:target.clone()};execute(&source,&action).unwrap();assert_eq!(fs::read_to_string(target.join("source/note")).unwrap(),"original");
+        assert!(execute(&source,&action).is_err());assert!(execute(&source,&Action{action:ActionOpts::MOVE,path:source.clone()}).is_err());assert!(source.join("note").exists());
+    }
+    #[test] fn action_chain_uses_moved_path() {
+        let dir=assert_fs::TempDir::new().unwrap();let source=dir.path().join("note.txt");let moved=dir.path().join("moved");let copied=dir.path().join("copied");fs::create_dir(&moved).unwrap();fs::create_dir(&copied).unwrap();fs::write(&source,"keep me").unwrap();
+        assert!(FSActions::operate("test","test",&source,&[Action{action:ActionOpts::MOVE,path:moved.clone()},Action{action:ActionOpts::COPY,path:copied.clone()}]).is_none());
+        assert!(!source.exists());assert_eq!(fs::read_to_string(moved.join("note.txt")).unwrap(),"keep me");assert_eq!(fs::read_to_string(copied.join("note.txt")).unwrap(),"keep me");
+    }
+
 }

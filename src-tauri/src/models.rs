@@ -67,10 +67,10 @@ impl UnitOpts {
     pub fn get_size(&self, size: u64) -> u64 {
         match self {
             Self::B => size,
-            Self::Kb => size * 1024,
-            Self::Mb => size * 1048576,
-            Self::Gb => size * 1073741824,
-            Self::Tb => size * 1099511627800,
+            Self::Kb => size.saturating_mul(1024),
+            Self::Mb => size.saturating_mul(1048576),
+            Self::Gb => size.saturating_mul(1073741824),
+            Self::Tb => size.saturating_mul(1099511627776),
         }
     }
 }

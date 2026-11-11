@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { twMerge } from "tailwind-merge"
-import { onMounted } from "vue"
+import { onMounted, ref } from "vue"
 import Gnome from "./controls/linux/Gnome.vue"
 import MacOs from "./controls/MacOs.vue"
 import Windows from "./controls/Windows.vue"
@@ -18,19 +18,19 @@ const props = withDefaults(defineProps<WindowControlsProps>(), {
   className: "",
 })
 
-let platform = props.platform
+const platform = ref(props.platform)
 onMounted(() => {
   getOsType().then((type) => {
-    if (!platform) {
+    if (!platform.value) {
       switch (type) {
-        case "Darwin":
-          platform = "macos"
+        case "macos":
+          platform.value = "macos"
           break
-        case "Linux":
-          platform = "gnome"
+        case "linux":
+          platform.value = "gnome"
           break
         default:
-          platform = "windows"
+          platform.value = "windows"
       }
     }
   })

@@ -1,12 +1,16 @@
-#![feature(lazy_cell)]
+use tauri::Emitter;
 use lazy_mut::lazy_mut;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, rc::Rc, sync::{LazyLock, Mutex}};
+use std::{
+    borrow::Borrow,
+    rc::Rc,
+    sync::{LazyLock, Mutex},
+};
 
 #[derive(Default)]
 pub struct Channel {
-    window: Option<tauri::Window>, // tauri::Window
+    window: Option<tauri::WebviewWindow>, // tauri::WebviewWindow
 }
 
 impl Channel {
@@ -14,11 +18,11 @@ impl Channel {
         Self::default()
     }
 
-    pub fn window(&self) -> &Option<tauri::Window> {
+    pub fn window(&self) -> &Option<tauri::WebviewWindow> {
         self.window.borrow()
     }
 
-    pub fn init_window(&mut self, window: tauri::Window) {
+    pub fn init_window(&mut self, window: tauri::WebviewWindow) {
         self.window = Some(window);
     }
 
@@ -26,7 +30,7 @@ impl Channel {
     where
         T: Serialize + Clone,
     {
-        self.window.as_ref().unwrap().emit(&event, payload);
+        if let Some(window) = &self.window { let _ = window.emit(&event, payload); }
     }
 }
 

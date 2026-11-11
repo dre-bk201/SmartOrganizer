@@ -1,6 +1,8 @@
 #![allow(unused)]
 mod actions;
+mod initial_scan;
 pub mod logger;
+mod rules;
 
 use actions::*;
 use logger::*;
@@ -26,18 +28,19 @@ use std::{
         mpsc::{channel, Receiver, Sender},
         Arc, Mutex, MutexGuard,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::{database::create_tables, *};
 
 pub struct SmartOrganizer {
     pub listeners: Arc<Mutex<Vec<ListenerData>>>,
-    watched_paths: HashMap<PathBuf, u16>, // keeps track of all the paths that are being watched
+    watched_paths: HashMap<PathBuf, bool>, // keeps track of all the paths that are being watched
     debouncer: Debouncer<RecommendedWatcher, FileIdMap>, // does the actual monitoring of the paths
     rx: Arc<Mutex<Receiver<Vec<DebouncedEvent>>>>, // receiver of all events
     database: SqliteConnection,
     is_running: bool,
+    activated_at: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
 impl SmartOrganizer {
@@ -46,39 +49,51 @@ impl SmartOrganizer {
             println!("started");
             let rx = self.rx.clone();
             let data = self.listeners.clone();
+            let activated_at = self.activated_at.clone();
             self.is_running = true;
 
             std::thread::Builder::new()
                 .name(String::from("fs"))
-                .spawn(move || loop {
-                    for event in rx.lock().unwrap().recv().unwrap() {
-                        match event.kind {
-                            EventKind::Create(_) => {
-                                Self::parse(event.paths[0].clone(), &data.lock().unwrap());
+                .spawn(move || {
+                    while let Ok(events) = rx.lock().unwrap().recv() {
+                        for event in events {
+                            let relevant = matches!(
+                                event.kind,
+                                EventKind::Create(_)
+                                    | EventKind::Modify(
+                                        ModifyKind::Any | ModifyKind::Data(_) | ModifyKind::Name(_)
+                                    )
+                            );
+                            if !relevant {
+                                continue;
                             }
-
-                            EventKind::Modify(kind) => match kind {
-                                ModifyKind::Any => {
-                                    Self::parse(event.paths[0].clone(), &data.lock().unwrap());
-                                }
-                                ModifyKind::Name(RenameMode::To) => {
-                                    Self::parse(event.paths[0].clone(), &data.lock().unwrap());
-                                }
-                                ModifyKind::Name(RenameMode::Both) => {
-                                    Self::parse(event.paths[1].clone(), &data.lock().unwrap());
-                                }
-                                ModifyKind::Name(RenameMode::Any) => {
-                                    Self::parse(event.paths[0].clone(), &data.lock().unwrap());
-                                }
-                                ModifyKind::Data(DataChange::Any) => {
-                                    Self::parse(event.paths[0].clone(), &data.lock().unwrap());
-                                }
-                                _ => {}
-                            },
-                            _ => {}
+                            let path = if matches!(
+                                event.kind,
+                                EventKind::Modify(ModifyKind::Name(RenameMode::Both))
+                            ) {
+                                event.paths.get(1)
+                            } else {
+                                event.paths.first()
+                            };
+                            if let Some(path) = path {
+                                // Do not hold the state mutex during slow filesystem operations.
+                                let snapshot = data.lock().unwrap().clone();
+                                let eligible: Vec<_> = snapshot
+                                    .into_iter()
+                                    .filter(|listener| {
+                                        activated_at
+                                            .lock()
+                                            .unwrap()
+                                            .get(&listener.id)
+                                            .is_none_or(|started| event.time >= *started)
+                                    })
+                                    .collect();
+                                Self::parse(path, &eligible);
+                            }
                         }
                     }
-                });
+                })
+                .expect("Unable to start filesystem worker");
         }
     }
 
@@ -104,105 +119,155 @@ impl SmartOrganizer {
         }
     }
 
-    pub async fn add_listener(&mut self, listener: &ListenerData) -> Result<String, sqlx::Error> {
-        // needs working on
-        let found = ListenerQuery::fetch_one(self.database(), &listener.id).await;
-
-        match found {
-            Ok(_) => {
-                for path in &listener.monitors {
-                    *self.watched_paths.entry(path.to_owned()).or_default() += 1; // increments how many watchers on path
-                    self.watch_path(path, listener.deep);
-                }
-            }
-            Err(e) => {
-                ListenerQuery::insert_one(self.database(), listener).await?;
+    fn sync_watches(&mut self) {
+        let mut desired = HashMap::new();
+        for listener in self.listeners.lock().unwrap().iter().filter(|l| l.enabled) {
+            for path in &listener.monitors {
+                let recursive = desired.entry(path.clone()).or_insert(false);
+                *recursive |= listener.deep;
             }
         }
+        let obsolete: Vec<_> = self
+            .watched_paths
+            .iter()
+            .filter(|(path, recursive)| desired.get(*path) != Some(*recursive))
+            .map(|(path, _)| path.clone())
+            .collect();
+        for path in obsolete {
+            match self.debouncer.watcher().unwatch(&path) {
+                Ok(()) => {
+                    self.watched_paths.remove(&path);
+                }
+                Err(error) => eprintln!("Could not stop watching {}: {error}", path.display()),
+            }
+        }
+        for (path, recursive) in desired {
+            if self.watched_paths.get(&path) == Some(&recursive) {
+                continue;
+            }
+            let mode = if recursive {
+                RecursiveMode::Recursive
+            } else {
+                RecursiveMode::NonRecursive
+            };
+            match self.debouncer.watcher().watch(&path, mode) {
+                Ok(()) => {
+                    self.watched_paths.insert(path, recursive);
+                }
+                Err(error) => eprintln!("Could not watch {}: {error}", path.display()),
+            }
+        }
+    }
 
-        self.listeners
+    pub async fn add_listener(&mut self, listener: &ListenerData) -> Result<String, sqlx::Error> {
+        let created = match ListenerQuery::fetch_one(self.database(), &listener.id).await {
+            Ok(Some(_)) => false,
+            Ok(None) | Err(sqlx::Error::RowNotFound) => {
+                ListenerQuery::insert_one(self.database(), listener).await?;
+                true
+            }
+            Err(error) => return Err(error),
+        };
+        if self
+            .listeners
             .lock()
-            .expect("Unable to lock mutex")
-            .push(listener.clone());
-
+            .unwrap()
+            .iter()
+            .any(|item| item.id == listener.id)
+        {
+            return Ok(listener.id.clone());
+        }
+        // Restoring persisted listeners on startup must not repeat the initial pass.
+        if created && listener.enabled {
+            Self::initial_pass(listener.clone()).await;
+            self.activated_at
+                .lock()
+                .unwrap()
+                .insert(listener.id.clone(), Instant::now());
+        }
+        self.listeners.lock().unwrap().push(listener.clone());
+        self.sync_watches();
         Ok(listener.id.clone())
     }
 
-    pub async fn remove_listener(&mut self, listener: &ListenerData) -> Option<ListenerData> {
-        for rmpath in listener.monitors.iter() {
-            if let Some(attached) = self.watched_paths.get_mut(rmpath) {
-                *attached -= 1;
-
-                if *attached == 0 {
-                    self.watched_paths.remove(rmpath);
-                }
-            }
+    pub async fn remove_listener(
+        &mut self,
+        listener: &ListenerData,
+    ) -> Result<Option<ListenerData>, sqlx::Error> {
+        let removed = ListenerQuery::remove_one(self.database(), &listener.id).await?;
+        if removed.is_some() {
+            self.listeners
+                .lock()
+                .unwrap()
+                .retain(|item| item.id != listener.id);
+            self.activated_at.lock().unwrap().remove(&listener.id);
+            self.sync_watches();
         }
-
-        match ListenerQuery::remove_one(self.database(), &listener.id).await {
-            Ok(data) => match data {
-                Some(data) => {
-                    self.listeners.lock().unwrap().retain(|v| v.id != data.id);
-                    Some(data)
-                }
-                None => None,
-            },
-            Err(e) => {
-                println!("ERROR: {e:?}");
-                None
-            }
-        }
+        Ok(removed)
     }
 
-    pub async fn update_listener(&mut self, listener: &ListenerData) -> String {
-        ListenerQuery::update_one(self.database(), listener).await;
-
-        let updated = ListenerQuery::fetch_one(self.database(), &listener.id)
-            .await
-            .expect("`update_listener`: failed to `fetch_one`")
-            .unwrap();
-
-        let mut listeners = self.listeners.clone();
-        let mut listeners = listeners.lock().unwrap();
-
-        let idx = listeners
+    pub async fn update_listener(
+        &mut self,
+        listener: &ListenerData,
+    ) -> Result<String, sqlx::Error> {
+        let previous = self
+            .listeners
+            .lock()
+            .unwrap()
             .iter()
-            .position(|item| item.id == updated.id)
-            .unwrap();
-
-        let (added, removed) = diff(&listeners[idx].monitors, &listener.monitors);
-
-        for path in added {
-            *self.watched_paths.entry(path.to_owned()).or_default() += 1; // increments how many watches on this path
-            self.watch_path(path, listener.deep);
-        }
-
-        for path in removed {
-            if let Some(attached) = self.watched_paths.get_mut(&path) {
-                *attached -= 1;
-
-                if *attached == 0 {
-                    self.watched_paths.remove(&path);
-                }
+            .find(|item| item.id == listener.id)
+            .cloned()
+            .ok_or(sqlx::Error::RowNotFound)?;
+        ListenerQuery::update_one(self.database(), listener).await?;
+        let rescan = initial_scan::needs_initial_pass(Some(&previous), listener);
+        if rescan {
+            // Pause this listener while scanning; other listeners keep running.
+            if let Some(item) = self
+                .listeners
+                .lock()
+                .unwrap()
+                .iter_mut()
+                .find(|item| item.id == listener.id)
+            {
+                item.enabled = false;
             }
+            self.sync_watches();
+            Self::initial_pass(listener.clone()).await;
+            self.activated_at
+                .lock()
+                .unwrap()
+                .insert(listener.id.clone(), Instant::now());
         }
+        if let Some(item) = self
+            .listeners
+            .lock()
+            .unwrap()
+            .iter_mut()
+            .find(|item| item.id == listener.id)
+        {
+            *item = listener.clone();
+        }
+        self.sync_watches();
+        Ok(listener.id.clone())
+    }
 
-        listeners[idx] = updated;
-
-        listeners[idx].id.clone()
+    async fn initial_pass(listener: ListenerData) {
+        if let Err(error) = tokio::task::spawn_blocking(move || {
+            // Collect before acting so copies cannot extend this same traversal.
+            for path in initial_scan::existing_paths(&listener) {
+                Self::parse(path, std::slice::from_ref(&listener));
+            }
+        })
+        .await
+        {
+            eprintln!("Initial folder scan failed: {error}");
+        }
     }
 }
 
 /// Associated Methods
 impl SmartOrganizer {
     pub async fn new() -> Self {
-        let (tx, rx) = channel();
-        let debouncer = new_debouncer(Duration::from_millis(500), None, move |res| {
-            if let Ok(event) = res {
-                tx.send(event).unwrap();
-            }
-        })
-        .expect("Failed to initialize 'DebouncedWatcher'");
         // sqlite://smartorganizer.db?mode=rwc
 
         // pub const URI: String = format!("sqlite://{}/data.db?mode=rwc", DIRS.data_local_dir().display());
@@ -217,8 +282,23 @@ impl SmartOrganizer {
             .await
             .expect("Failed to establish connection");
 
-        ListenerQuery::create(database.borrow_mut()).await;
-        LogQuery::create(database.borrow_mut()).await;
+        Self::from_database(database).await
+    }
+
+    pub(crate) async fn from_database(mut database: SqliteConnection) -> Self {
+        let (tx, rx) = channel();
+        let debouncer = new_debouncer(Duration::from_millis(500), None, move |res| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        })
+        .expect("Failed to initialize 'DebouncedWatcher'");
+        ListenerQuery::create(database.borrow_mut())
+            .await
+            .expect("Cannot initialize listener tables");
+        LogQuery::create(database.borrow_mut())
+            .await
+            .expect("Cannot initialize log table");
 
         Self {
             debouncer,
@@ -227,6 +307,7 @@ impl SmartOrganizer {
             listeners: Arc::new(Mutex::new(Vec::new())),
             database,
             is_running: false,
+            activated_at: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -239,11 +320,10 @@ impl SmartOrganizer {
         if !path.exists() {
             return;
         }
-        dbg!(listeners);
 
         for listener in listeners {
             let should_recv = listener.enabled && Self::should_recv_evt(path, listener);
-            dbg!(should_recv);
+
             if should_recv {
                 let is_match = Self::apply_rule(path, listener);
                 println!("{} is a match: {is_match}", path.display());
@@ -256,228 +336,23 @@ impl SmartOrganizer {
 
     pub fn should_recv_evt<P: AsRef<Path>>(path: P, listener: &ListenerData) -> bool {
         let path = path.as_ref();
-        let mut should_recv = false;
-
-        for watched_path in listener.monitors.iter() {
-            // if watched_path is a sub path
-            if path.starts_with(watched_path) {
-                if listener.deep {
-                    return true;
-                }
-
-                let path_len = path.components().collect::<Vec<_>>().len();
-                let watched_path_len = watched_path.components().collect::<Vec<_>>().len();
-                let diff = path_len.abs_diff(watched_path_len);
-
-                if (diff == 1) {
-                    return true;
-                }
-            }
+        // Ignore this listener's output tree to prevent recursive copy/move feedback.
+        if listener.actions.iter().any(|action| {
+            matches!(action.action, ActionOpts::COPY | ActionOpts::MOVE)
+                && !action.path.as_os_str().is_empty()
+                && path.starts_with(&action.path)
+        }) {
+            return false;
         }
-
-        false
+        listener.monitors.iter().any(|watched| {
+            path != watched
+                && path.starts_with(watched)
+                && (listener.deep || path.parent() == Some(watched.as_path()))
+        })
     }
 
-    /// Applies all rules to listener to determine if it is a match
     fn apply_rule<P: AsRef<Path>>(path: P, listener: &ListenerData) -> bool {
-        use crate::Condition::*;
-
-        let matches = listener
-            .rules
-            .iter()
-            .map(|rule| match rule.condition {
-                Includes => Self::includes(&path, &rule.search, &rule.data.text),
-                NotIncludes => match rule.search {
-                    SearchType::FileExtension | SearchType::FileContent | SearchType::FileName => {
-                        path.as_ref().is_file()
-                            & !Self::includes(&path, &rule.search, &rule.data.text)
-                    }
-
-                    SearchType::FolderName => {
-                        path.as_ref().is_dir()
-                            & !Self::includes(&path, &rule.search, &rule.data.text)
-                    }
-                    _ => !Self::includes(&path, &rule.search, &rule.data.text),
-                },
-                ExactMatch => Self::exact_match(&path, &rule.search, &rule.data.text),
-                IsNot => match rule.search {
-                    SearchType::FileExtension | SearchType::FileContent | SearchType::FileName => {
-                        path.as_ref().is_file()
-                            & !Self::exact_match(&path, &rule.search, &rule.data.text)
-                    }
-
-                    SearchType::FolderName => {
-                        path.as_ref().is_dir()
-                            & !Self::exact_match(&path, &rule.search, &rule.data.text)
-                    }
-                    _ => !Self::exact_match(&path, &rule.search, &rule.data.text),
-                },
-                Greater => Self::greater(&path, &rule.search, &rule.data.size),
-                Less => {
-                    path.as_ref().is_file() & !Self::greater(&path, &rule.search, &rule.data.size)
-                }
-
-                IsEqual => Self::is_equal(&path, &rule.search, &rule.data.size),
-                _ => false,
-            })
-            .collect::<Vec<_>>();
-
-        Self::match_and_or(&listener.selection, &matches)
-    }
-
-    fn match_and_or(selection: &Selection, matches: &[bool]) -> bool {
-        match selection {
-            Selection::Any => matches.iter().skip(1).fold(matches[0], |a, b| a | b),
-            Selection::All => matches.iter().skip(1).fold(matches[0], |a, b| a & b),
-        }
-    }
-
-    fn is_equal<P: AsRef<Path>>(path: P, search_type: &SearchType, size: &(u64, UnitOpts)) -> bool {
-        let path = path.as_ref();
-
-        if path.is_file() {
-            if let SearchType::FileSize = search_type {
-                return path.metadata().unwrap().len() == size.1.get_size(size.0);
-            };
-        }
-        false
-    }
-
-    fn greater<P: AsRef<Path>>(path: P, search_type: &SearchType, size: &(u64, UnitOpts)) -> bool {
-        let path = path.as_ref();
-
-        if path.is_file() {
-            if let SearchType::FileSize = search_type {
-                return path.metadata().unwrap().len() > size.1.get_size(size.0);
-            };
-        }
-
-        false
-    }
-
-    fn exact_match<P: AsRef<Path>>(path: P, search_type: &SearchType, matches: &[String]) -> bool {
-        let path = path.as_ref();
-        let mut is_match = false;
-
-        match search_type {
-            SearchType::FileName => {
-                if path.is_file() {
-                    if let Some(filename) = path.file_name() {
-                        let filename = filename.to_str().unwrap();
-                        is_match = matches.iter().fold(false, |a, b| a | filename.eq(b));
-                    }
-                }
-            }
-
-            SearchType::FileExtension => match path.extension() {
-                Some(ext) => {
-                    let ext: String = ext.to_str().unwrap().into();
-                    is_match = matches.iter().fold(false, |a, b| a | ext.eq(b));
-                    println!("ext:{ext}; matches:{matches:?}; is_match:{is_match}");
-                }
-                None => {
-                    // is_match = matches.contains(&"".into());
-                    println!("File has no extension");
-                }
-            },
-
-            SearchType::FileContent => {
-                use sliceslice::x86::DynamicAvx2Searcher;
-                if let Ok(file_content) = std::fs::read_to_string(path) {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let searcher = unsafe { DynamicAvx2Searcher::new(to_match.as_bytes()) };
-                        unsafe { searcher.search_in(file_content.as_bytes()) }
-                    });
-                }
-            }
-
-            SearchType::PathName => {
-                if let Ok(abs_path) = path.canonicalize() {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let as_str = abs_path.to_string_lossy();
-                        let normalized = as_str.to_lowercase().replace('\\', "/");
-                        normalized.eq(&to_match.replace('\\', "/"))
-                    });
-                }
-            }
-
-            SearchType::FolderName => {
-                if path.is_dir() {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let foldername = path.file_name().unwrap().to_str().unwrap();
-                        foldername.eq(to_match)
-                    });
-                }
-            }
-
-            _ => {}
-        }
-
-        is_match
-    }
-
-    fn includes<P: AsRef<Path>>(path: P, search_type: &SearchType, matches: &[String]) -> bool {
-        let path = path.as_ref();
-        let matches = matches.iter().map(|v| v.to_lowercase()).collect::<Vec<_>>();
-        let mut is_match = false;
-
-        match search_type {
-            SearchType::FileName => {
-                if path.is_file() {
-                    if let Some(filename) = path.file_name() {
-                        let filename = filename.to_str().unwrap();
-                        is_match = matches.iter().fold(false, |a, b| a | filename.contains(b));
-                    }
-                }
-            }
-
-            SearchType::FileExtension => match path.extension() {
-                Some(ext) => {
-                    let ext: String = ext.to_str().unwrap().into();
-                    is_match = matches
-                        .iter()
-                        .fold(false, |a, b| a | ext.to_lowercase().contains(b))
-                }
-                None => {
-                    // is_match = matches.contains(&"".into());
-                    println!("File has no extension");
-                }
-            },
-
-            SearchType::FileContent => {
-                use sliceslice::x86::DynamicAvx2Searcher;
-                if let Ok(file_content) = std::fs::read_to_string(path) {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let searcher = unsafe { DynamicAvx2Searcher::new(to_match.as_bytes()) };
-                        let content = file_content.to_lowercase();
-                        unsafe { searcher.search_in(content.as_bytes()) }
-                    });
-                }
-            }
-
-            SearchType::PathName => {
-                if let Ok(abs_path) = path.canonicalize() {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let as_str = abs_path.to_string_lossy();
-                        let normalized = as_str.to_lowercase().replace('\\', "/");
-                        normalized.contains(&to_match.to_lowercase().replace('\\', "/"))
-                    });
-                }
-            }
-
-            SearchType::FolderName => {
-                if path.is_dir() {
-                    is_match = matches.iter().fold(false, |a, to_match| {
-                        let foldername = path.file_name().unwrap().to_str().unwrap();
-                        foldername.to_lowercase().contains(&to_match.to_lowercase())
-                    });
-                }
-            }
-
-            _ => {}
-        }
-
-        is_match
+        rules::matches_listener(path.as_ref(), listener)
     }
 }
 

@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import type { OsType } from "@tauri-apps/api/os";
+import type { OsType } from "@tauri-apps/plugin-os";
 import { twMerge } from "tailwind-merge"
-import { onMounted, ref } from "vue"
+import { onMounted, ref, computed } from "vue"
 import type { WindowControlsProps, WindowTitlebarProps } from "./types"
 import { getOsType } from "./utils/os"
 import WindowControls from "./WindowControls.vue"
 
-const { controlsOrder, windowControlsProps } = withDefaults(
+const props = withDefaults(
   defineProps<WindowTitlebarProps>(),
   {
     controlsOrder: "system",
   }
 )
 
+const { controlsOrder, windowControlsProps } = props;
 const osType = ref<OsType | undefined>(undefined)
 
 onMounted(() => {
@@ -21,10 +22,10 @@ onMounted(() => {
   })
 })
 
-const left =
+const left = computed(() =>
   controlsOrder === "left" ||
   (controlsOrder === "platform" && windowControlsProps?.platform === "macos") ||
-  (controlsOrder === "system" && osType.value === "Darwin")
+  (controlsOrder === "system" && osType.value === "macos"))
 
 const customProps = (ml: string) => {
   if (windowControlsProps?.justify !== undefined) return windowControlsProps

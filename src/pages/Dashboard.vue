@@ -1,192 +1,37 @@
 <script setup lang="ts">
-import Listener from '../components/listener/Listener.vue';
-import ContextMenu from '../components/common/ContextMenu.vue';
-
-import EditIcon from "~icons/edit";
-import TrashIcon from "~icons/trash";
-import Dot from "../components/common/Dot.vue";
-
+import { computed, inject, ref } from 'vue';
 import { ListenerStoreKey, ListenerModalKey } from '../store';
-import { STATUSCOLORS, defaultListener } from "../static";
-
-import { inject, ref, computed } from 'vue';
-
-import emptystate from "../assets/img/empty-state.png";
-
+import { isListenerComplete } from '../lib/listenerValidation';
+import { defaultListener } from '../static';
+import { PlusIcon, EditIcon, TrashIcon } from '@/icons';
+import { formatDistanceToNow, isValid } from 'date-fns';
 const { listener } = inject(ListenerStoreKey)!;
-const { remove, open } = inject(ListenerModalKey)!;
-const contextMenu = ref<null | InstanceType<typeof ContextMenu>>(null);
-
-let lId = ref("");
-
-const filter = computed(() =>
-  listener.listeners.filter(l => l.title.toLowerCase().includes(listener.search.toLowerCase()))
-);
-
-const enabled = computed(() => {
-  let found = listener.findById(lId.value);
-  if (!found) return false;
-  return found.enabled;
-});
-
-const status = computed(() => {
-  let statusMap = {
-    ACTIVE: 0,
-    INACTIVE: 0,
-    DRAFT: 0,
-  };
-
-  for (let l of listener.getListeners) {
-    let found = statusFromId(l.id);
-    switch (found) {
-      case "ACTIVE":
-        statusMap[found]++;
-        break;
-      case "INACTIVE":
-        statusMap[found]++;
-        break;
-      case "DRAFT":
-        statusMap[found]++;
-        break;
-    }
-  }
-
-  return statusMap;
-});
-
-function statusFromId(id: string) {
-  let found = listener.listeners.find(lst => lst.id == id);
-  if (!found) return null;
-
-  let status = found.enabled ? "ACTIVE" : "INACTIVE";
-  if (
-    found.monitors.length < 1 ||
-    found.rules.length < 1 ||
-    found.actions.length < 1
-  ) {
-    status = "DRAFT";
-  }
-
-  return status;
-}
-
-
-function setId(id: string) {
-  listener.setActiveId(id);
-}
-
-function edit(id: string) {
-  setId(id);
-  open(id)
-}
-
-function deleteListener() {
-  contextMenu.value?.close();
-  remove(lId.value);
-}
-
-async function openAddListenerModal() {
-  let l = defaultListener();
-  await listener.addListener(l);
-  open(l.id);
-}
-
-function showContextMenu(id: string) {
-  lId.value = id;
-  contextMenu.value?.show();
-}
-
+const { open, remove } = inject(ListenerModalKey)!;
+const error = ref('');
+const filter = computed(() => listener.listeners.filter(item => item.title.toLowerCase().includes(listener.search.toLowerCase())));
+function state(item: IListener) { return !isListenerComplete(item) ? 'Draft' : item.enabled ? 'Active' : 'Paused'; }
+const counts = computed(() => ({ active: listener.listeners.filter(item => state(item) === 'Active').length, paused: listener.listeners.filter(item => state(item) === 'Paused').length, drafts: listener.listeners.filter(item => state(item) === 'Draft').length }));
+const recent = computed(() => [...listener.logs].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0,4));
+function when(timestamp?: string) { if (!timestamp) return 'No activity yet'; const date = new Date(timestamp); return isValid(date) ? formatDistanceToNow(date, { addSuffix: true }) : 'Unknown time'; }
+function lastActivity(id: string) { return recentFor(id)?.timestamp; }
+function recentFor(id: string) { return [...listener.logs].filter(log => log.parentId === id).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]; }
+function filename(path: string) { return path.split(/[\\/]/).filter(Boolean).pop() || path; }
+async function addListener() { error.value = ''; try { const item = defaultListener(); await listener.addListener(item); open(item.id); } catch { error.value = 'Could not create a listener. Please try again.'; } }
+async function toggle(item: IListener) { if (!isListenerComplete(item)) return; error.value = ''; try { await listener.updateById(item.id, { ...item, enabled: !item.enabled }); } catch { error.value = 'Could not update this listener. Please try again.'; } }
 </script>
-
 <template>
-  <div v-if="listener.listeners.length" class="h-full px-3 flex flex-col">
-    <section class="flex gap-8 pt-6 px-3">
-      <span v-for="(value, key) in status"
-        class="chip p-2 outline dark:outline-light_hl adaptive--dark outline-dark_hl outline-1 rounded-md fg--theme inline-flex justify-center items-center">
-        <span :style="{ color: STATUSCOLORS[key] }" class="px-1 text-4xl font-bold"> {{ value }} </span>
-        <span class="inline-flex flex-col">
-          <span class="text-xs text-primary"> {{ key }} </span>
-          <span class="text-lg font-bold text-primary"> LISTENERS </span>
-        </span>
-      </span>
+  <main class="workspace">
+    <header class="page-header"><div><h1>Your workspace, in order.</h1><p>Watch your folders. Let your rules take care of the rest.</p></div><button class="primary" @click="addListener"><PlusIcon aria-hidden="true"/>New listener</button></header>
+    <p v-if="error" role="alert" class="error">{{ error }}</p>
+    <dl class="summary"><div><dt>Active</dt><dd>{{ counts.active }}</dd></div><div><dt>Paused</dt><dd>{{ counts.paused }}</dd></div><div><dt>Drafts</dt><dd>{{ counts.drafts }}</dd></div></dl>
+    <section v-if="listener.listeners.length" aria-labelledby="listeners-heading"><div class="section-heading"><h2 id="listeners-heading">Your listeners</h2><span>{{ filter.length }} of {{ listener.listeners.length }}</span></div>
+      <div v-if="filter.length" class="table-scroll"><table><thead><tr><th>Listener</th><th>Rules</th><th>Status</th><th class="activity-column">Last activity</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody><tr v-for="item in filter" :key="item.id"><td><button class="listener-title" @click="open(item.id)">{{ item.title || 'Untitled listener' }}</button><p class="path" :title="item.monitors.join('\n')">{{ item.monitors[0] || 'Choose a folder to watch' }}<span v-if="item.monitors.length > 1"> +{{ item.monitors.length - 1 }}</span></p></td><td class="rule-count">{{ item.rules.length }} {{ item.rules.length === 1 ? 'rule' : 'rules' }}</td><td><button class="status" :disabled="state(item) === 'Draft'" :class="state(item).toLowerCase()" :aria-label="`${item.enabled ? 'Pause' : 'Enable'} ${item.title}`" :title="item.enabled ? 'Pause listener' : 'Enable listener'" @click="toggle(item)"><span></span>{{ state(item) }}</button></td><td class="activity-column time">{{ when(lastActivity(item.id)) }}</td><td><div class="row-actions"><button :aria-label="`Edit ${item.title}`" title="Edit listener" @click="open(item.id)"><EditIcon aria-hidden="true"/></button><button :aria-label="`Delete ${item.title}`" title="Delete listener" @click="remove(item.id)"><TrashIcon aria-hidden="true"/></button></div></td></tr></tbody></table></div>
+      <div v-else class="no-results"><h3>No listeners match “{{ listener.search }}”</h3><button class="text-button" @click="listener.setSearch('')">Clear search</button></div>
     </section>
-
-    <section class="my-3 flex items-center px-3 flex-shrink-0">
-      <span class="mr-4 text-xl">Listeners</span>
-      <span class="flex-grow bg-gray-600 w-full h-[1px]" />
-    </section>
-
-    <section class="flex-grow h-0 overflow-y-auto px-3 flex flex-col gap-5">
-      <div tabindex="1" id="focusBlank" class="absolute w-0 h-0" />
-      <ContextMenu ref="contextMenu">
-        <ul class="py-2 px-2 dark:bg-[#424349] shadow-lg rounded-md w-[170px] flex flex-col gap-2">
-          <li
-            class="px-5 py-3 hover:cursor-pointer hover:bg-darker flex bg-[#303136] text-white overflow-hidden rounded-md items-center gap-4"
-            @click="() => { listener.toggleEnabled(lId); contextMenu?.close() }">
-            <Dot :class="!enabled ? 'bg-green-400 border-[#1C732F]' : 'bg-[#FC4343] border-[#8C4343]'" />
-            {{ enabled ? "Disable" : "Enable" }}
-          </li>
-
-          <li
-            class="px-5 py-3 hover:cursor-pointer hover:bg-darker flex bg-[#303136] text-white overflow-hidden rounded-md items-center gap-4"
-            @click="() => edit(lId)">
-            <EditIcon />
-            Edit
-          </li>
-
-          <li
-            class="px-5 py-3 hover:cursor-pointer hover:bg-darker flex bg-[#303136] text-white overflow-hidden rounded-md items-center gap-4"
-            @click="() => deleteListener()">
-            <TrashIcon class="text-red-500" />
-            Delete
-          </li>
-
-        </ul>
-      </ContextMenu>
-
-      <Listener @click.right.prevent="() => showContextMenu(lst.id)" v-bind="lst" @set-active-id="setId"
-        v-for="lst in filter" :key="lst.id" />
-    </section>
-
-  </div>
-
-  <div v-else class="h-full text-1xl text-[#50505B] flex flex-col items-center gap-4 justify-center">
-    <h3 class="font-poppins text-4xl text-dark dark:text-white">There's no</h3>
-    <h1 class="oo">ORGANIZER(S)</h1>
-    <img :src="emptystate">
-
-    <p class="w-[70%]">
-      Oh, you currently have created no organizer(s). You can do so by clicking the
-      <span @click="openAddListenerModal" class="cursor-pointer py-1 px-2 rounded-md text-[#6C8DFF] dark:!bg-[#18181B] adaptive--dark">
-        + Add New Listener
-      </span>
-      &nbsp;in the side bar.
-    </p>
-
-    <p class="text-[#838393]">“Getting your files in order one folder at a time”</p>
-
-  </div>
+    <section v-else class="empty"><div class="folder-outline" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M5 14a4 4 0 0 1 4-4h10l5 6h15a4 4 0 0 1 4 4v17a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z"/><path d="M17 27h14m-7-7v14"/></svg></div><h2>Start with one folder.</h2><p>Create a listener, choose what matches, and tell SmartOrganizer what to do with your files.</p><button class="primary" @click="addListener">Create your first listener</button></section>
+    <section v-if="listener.listeners.length" class="recent" aria-labelledby="activity-heading"><div class="section-heading"><h2 id="activity-heading">Recent activity</h2><router-link to="/journal">View journal</router-link></div><div v-if="recent.length" class="event-list"><div v-for="log in recent" :key="log.id" class="event"><span class="event-status" :class="log.level.toLowerCase()" aria-hidden="true"></span><div><strong>{{ filename(log.path) }}</strong><p>{{ log.action }}<span v-if="log.destination"> · {{ log.destination }}</span></p></div><time>{{ when(log.timestamp) }}</time></div></div><p v-else class="activity-empty">File activity will appear here when your listeners run.</p></section>
+  </main>
 </template>
-
-
 <style scoped>
-.font-poppins {
-  font-family: 'Poppins';
-  font-style: normal;
-}
-
-.oo {
-  font-family: 'Poppins';
-  font-style: normal;
-  font-weight: 900;
-  font-size: 52px;
-  line-height: 58px;
-
-  text-align: center;
-  text-transform: uppercase;
-
-  background: linear-gradient(180deg, #6C8DFF 28.21%, #1B358E 73.08%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}</style>
+.workspace{padding:32px;overflow:auto;flex:1;min-height:0;color:var(--flow-text,#422b32)}.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:29px}h1{font-size:27px;line-height:1.2;font-weight:650;letter-spacing:-.025em;margin-bottom:10px}.page-header p{font-size:13px;color:var(--flow-muted,#80616b)}.primary{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:6px;background:var(--flow-accent,#a32949);color:var(--flow-accent-ink,#fff);font-size:13px;white-space:nowrap}.primary svg{width:17px;height:17px}.summary{display:flex;gap:30px;padding-bottom:23px;margin-bottom:27px;border-bottom:1px solid var(--flow-border,#e8d9dd)}.summary div{display:flex;flex-direction:row-reverse;gap:8px;align-items:baseline}.summary dt{font-size:13px;color:var(--flow-muted,#80616b)}.summary dd{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums}.section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:15px}h2{font-size:16px;font-weight:600}.section-heading span,.section-heading a{font-size:12px;color:var(--flow-muted,#80616b)}.section-heading a:hover{color:var(--flow-accent,#a32949);text-decoration:underline}table{width:100%;border-collapse:collapse;text-align:left}th{font-size:12px;font-weight:500;color:var(--flow-muted,#80616b);padding:9px 9px;border-bottom:1px solid var(--flow-border,#e8d9dd)}td{padding:18px 9px;border-bottom:1px solid var(--flow-border,#e8d9dd);font-size:12px}th:first-child,td:first-child{padding-left:0}.listener-title{font-size:14px;font-weight:600;text-align:left;overflow-wrap:anywhere}.listener-title:hover{color:var(--flow-accent,#a32949);text-decoration:underline}.path{font-size:12px;color:var(--flow-muted,#80616b);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 8px;border-radius:5px;background:var(--flow-surface,#f5edef);color:var(--flow-muted,#80616b)}.status.active{background:var(--flow-accent-soft,#f5dfe6);color:var(--flow-accent,#a32949)}.status span{width:5px;height:5px;background:currentColor;border-radius:50%}.time{color:var(--flow-muted,#80616b);max-width:140px}.row-actions{display:flex;gap:3px;justify-content:flex-end}.row-actions button{padding:7px;border-radius:5px;color:var(--flow-muted,#80616b)}.row-actions button:hover{background:var(--flow-surface,#f5edef);color:var(--flow-text,#422b32)}.row-actions svg{width:16px;height:16px}.recent{margin-top:33px}.event{display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--flow-border,#e8d9dd)}.event strong{font-size:13px;font-weight:500;overflow-wrap:anywhere}.event p{font-size:12px;color:var(--flow-muted,#80616b);overflow-wrap:anywhere}.event time{font-size:12px;color:var(--flow-muted,#80616b);margin-left:auto;white-space:nowrap}.event-status{width:6px;height:6px;flex-shrink:0;border-radius:50%;background:var(--flow-accent,#a32949)}.event-status.error{background:#b64b42}.event-status.warn{background:#a87526}.empty{max-width:470px;text-align:center;margin:55px auto}.empty h2{font-size:24px;margin:18px 0 10px;letter-spacing:-.02em}.empty p{font-size:14px;line-height:1.7;color:var(--flow-muted,#80616b);margin-bottom:23px}.folder-outline{width:55px;height:55px;margin:auto;color:var(--flow-accent,#a32949)}.folder-outline svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.5}.activity-empty,.no-results{font-size:13px;color:var(--flow-muted,#80616b);padding:22px 0}.no-results h3{margin-bottom:8px}.text-button{color:var(--flow-accent,#a32949);text-decoration:underline}.error{padding:12px;border-radius:6px;background:#f7e6e0;color:#843c31;font-size:13px;margin-bottom:16px}@media(max-width:1000px){.activity-column{display:none}.workspace{padding:26px 24px}.rule-count{white-space:nowrap}}@media(max-width:650px){.workspace{padding:24px 18px}.page-header{flex-wrap:wrap}h1{font-size:24px}.summary{gap:20px}.rule-count{display:none}.event time{white-space:normal;max-width:80px}.path{max-width:180px}.row-actions{flex-direction:column}.table-scroll{overflow-x:auto}}
+</style>
